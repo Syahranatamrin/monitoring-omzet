@@ -1,0 +1,413 @@
+{
+ "name": "QC - Omzet Tahunan (GET)",
+ "nodes": [
+  {
+   "parameters": {
+    "content": "## QC - Omzet Tahunan (GET monitoring-omzet-tahunan?tahun=YYYY)\nOPSIONAL — mempercepat tab \"Omzet Tahunan\" di dashboard (1 panggilan, bukan 12). Tanpa flow ini dashboard tetap jalan (membaca flow pusat per bulan).\nSumber: Rekap Omzet (Master) → config, outlet, target · Data Omzet Harian <tahun> → tab data (hasil flow Sinkron Kasir).\nHanya MEMBACA, tidak menulis apa pun. Default tahun = tahun berjalan (WITA).\n• Realisasi per bulan per outlet = jumlah kolom omzet (Tunai + QRIS + Ojol, tanpa ongkir). Bulan tanpa baris = null (bukan 0).\n• Target per bulan = target_bulanan tab target (kosong = null).\n• Total brand Jan–Sep 2026 = sheet \"pizza nyantuy target 2026\" tab \"Target Bulanan\" (baris ACHIEV: C target, D realisasi) → field total_brand.\n  Sheet ini HARUS dibagikan (Viewer) ke syahrana@ai-automation-462913.iam.gserviceaccount.com. Bila gagal dibaca, flow tetap jalan (total_brand = null) dan dashboard memakai salinan terbenam.\n  Tahun lain: isi config target_bulanan_file_<tahun> = id sheet.\nKredensial: Google Service Account yang sama dengan flow pusat.",
+    "height": 380,
+    "width": 560
+   },
+   "id": "bac33f82-cabe-4abf-961e-432974afa482",
+   "name": "Catatan",
+   "type": "n8n-nodes-base.stickyNote",
+   "typeVersion": 1,
+   "position": [
+    -40,
+    -220
+   ]
+  },
+  {
+   "parameters": {
+    "httpMethod": "GET",
+    "path": "monitoring-omzet-tahunan",
+    "responseMode": "responseNode",
+    "options": {
+     "allowedOrigins": "*"
+    }
+   },
+   "id": "efe9f6e2-3812-4047-902f-176b47a9656a",
+   "name": "Webhook Omzet Tahunan",
+   "type": "n8n-nodes-base.webhook",
+   "typeVersion": 2,
+   "position": [
+    0,
+    160
+   ],
+   "webhookId": "d86268a0-3c9e-42e9-bae7-e04483a5daa8"
+  },
+  {
+   "parameters": {
+    "authentication": "serviceAccount",
+    "documentId": {
+     "__rl": true,
+     "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+     "mode": "id"
+    },
+    "sheetName": {
+     "__rl": true,
+     "value": "config",
+     "mode": "name"
+    },
+    "options": {
+     "outputFormatting": {
+      "values": {
+       "general": "UNFORMATTED_VALUE",
+       "date": "SERIAL_NUMBER"
+      }
+     },
+     "dataLocationOnSheet": {
+      "values": {
+       "rangeDefinition": "specifyRangeA1",
+       "range": "A1:C200"
+      }
+     }
+    }
+   },
+   "id": "da2af652-29f5-4f97-ba4d-40ea76303c98",
+   "name": "Baca Config",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.5,
+   "position": [
+    220,
+    160
+   ],
+   "credentials": {
+    "googleApi": {
+     "id": "9PAG5clr6jslUdIb",
+     "name": "Google Service Account account"
+    }
+   },
+   "alwaysOutputData": true,
+   "executeOnce": true,
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "// Pilih tahun grafik Omzet Tahunan: ?tahun=YYYY (default tahun berjalan WITA) → id file \"Data Omzet Harian <tahun>\" dari tab config master.\n// Output 1 item: {tahun, doc, ada_doc, tb_doc, ada_tb, tb_tab, tab_data, zona, hari_ini, tahun_tersedia:[...], gagal:[], catatan:[]}\nconst baca = node => { for (const n of [node, 1, 2, 3, 4, 5].map((x, i) => i ? node + x : node)) { try { return $(n).all().map(it => it.json); } catch (e) {} } return null; };\nconst gagal = [], catatan = [];\nconst cfgRows = baca('Baca Config');\nif (cfgRows === null || cfgRows.some(x => x && x.error)) gagal.push('Baca Config');\nconst cfg = {};\nfor (const r of cfgRows || []) { const k = String(r.key ?? r.Key ?? '').trim(); if (k) cfg[k] = r.value ?? r.Value ?? ''; }\nconst zona = String(cfg.zona || 'Asia/Makassar');\nconst now = DateTime.now().setZone(zona);\nconst wh = (baca('Webhook Omzet Tahunan') || [{}])[0] || {};\nconst q = wh.query || {};\nlet tahun = String(q.tahun || '').trim();\nif (!/^20\\d{2}$/.test(tahun)) { if (tahun) catatan.push('Parameter tahun \"' + tahun + '\" tidak valid (format YYYY), memakai tahun berjalan'); tahun = String(now.year); }\nconst tersedia = Object.keys(cfg).map(k => /^data_file_(\\d{4})$/.exec(k)).filter(m => m && String(cfg[m[0]] || '').trim()).map(m => +m[1]).sort();\nconst doc = String(cfg['data_file_' + tahun] || '').trim();\nif (!doc) catatan.push('config data_file_' + tahun + ' belum diisi di tab config master');\n// Sheet \"Target Bulanan\" (P&L per bulan, total brand): config target_bulanan_file_<tahun>, bawaan 2026 = sheet \"pizza nyantuy target 2026\" dari Nana.\nconst TB_BAWAAN = { '2026': '12oMKjxQ6LUwgi0icBDeV2VhPbRz4LAUoZxMyrjhl8sY' };\nconst tbDoc = String(cfg['target_bulanan_file_' + tahun] || TB_BAWAAN[tahun] || '').trim();\nreturn [{ json: { tahun: +tahun, doc: doc || 'BELUM-DIISI', ada_doc: !!doc, tb_doc: tbDoc || 'BELUM-DIISI', ada_tb: !!tbDoc, tb_tab: String(cfg.tab_target_bulanan || 'Target Bulanan'), tab_data: String(cfg.tab_data || 'data'), zona,\n  hari_ini: now.toISODate(), sekarang: now.toISO({ suppressMilliseconds: true }), tahun_tersedia: tersedia, gagal, catatan } }];\n"
+   },
+   "id": "09e48fe6-598f-4d95-82b1-9d9eda8a726f",
+   "name": "Pilih Tahun",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    440,
+    160
+   ],
+   "onError": "continueRegularOutput",
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "authentication": "serviceAccount",
+    "documentId": {
+     "__rl": true,
+     "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+     "mode": "id"
+    },
+    "sheetName": {
+     "__rl": true,
+     "value": "outlet",
+     "mode": "name"
+    },
+    "options": {
+     "outputFormatting": {
+      "values": {
+       "general": "UNFORMATTED_VALUE",
+       "date": "SERIAL_NUMBER"
+      }
+     }
+    }
+   },
+   "id": "6f59da20-3469-4cef-85d3-b6cd2c1ca1cf",
+   "name": "Baca Outlet",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.5,
+   "position": [
+    660,
+    160
+   ],
+   "credentials": {
+    "googleApi": {
+     "id": "9PAG5clr6jslUdIb",
+     "name": "Google Service Account account"
+    }
+   },
+   "alwaysOutputData": true,
+   "executeOnce": true,
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "authentication": "serviceAccount",
+    "documentId": {
+     "__rl": true,
+     "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+     "mode": "id"
+    },
+    "sheetName": {
+     "__rl": true,
+     "value": "target",
+     "mode": "name"
+    },
+    "options": {
+     "outputFormatting": {
+      "values": {
+       "general": "UNFORMATTED_VALUE",
+       "date": "SERIAL_NUMBER"
+      }
+     }
+    }
+   },
+   "id": "89ad1bec-2b4b-4c98-8923-c880235601e1",
+   "name": "Baca Target",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.5,
+   "position": [
+    880,
+    160
+   ],
+   "credentials": {
+    "googleApi": {
+     "id": "9PAG5clr6jslUdIb",
+     "name": "Google Service Account account"
+    }
+   },
+   "alwaysOutputData": true,
+   "executeOnce": true,
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "authentication": "serviceAccount",
+    "documentId": {
+     "__rl": true,
+     "value": "={{ $('Pilih Tahun').first().json.doc }}",
+     "mode": "id"
+    },
+    "sheetName": {
+     "__rl": true,
+     "value": "={{ $('Pilih Tahun').first().json.tab_data }}",
+     "mode": "name"
+    },
+    "options": {
+     "outputFormatting": {
+      "values": {
+       "general": "UNFORMATTED_VALUE",
+       "date": "SERIAL_NUMBER"
+      }
+     }
+    }
+   },
+   "id": "f2bcb3eb-c39c-47a9-95d2-74f5bd813f5a",
+   "name": "Baca Data",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.5,
+   "position": [
+    1100,
+    160
+   ],
+   "credentials": {
+    "googleApi": {
+     "id": "9PAG5clr6jslUdIb",
+     "name": "Google Service Account account"
+    }
+   },
+   "alwaysOutputData": true,
+   "executeOnce": true,
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "authentication": "serviceAccount",
+    "documentId": {
+     "__rl": true,
+     "value": "={{ $('Pilih Tahun').first().json.tb_doc }}",
+     "mode": "id"
+    },
+    "sheetName": {
+     "__rl": true,
+     "value": "={{ $('Pilih Tahun').first().json.tb_tab }}",
+     "mode": "name"
+    },
+    "options": {
+     "outputFormatting": {
+      "values": {
+       "general": "UNFORMATTED_VALUE",
+       "date": "SERIAL_NUMBER"
+      }
+     },
+     "dataLocationOnSheet": {
+      "values": {
+       "rangeDefinition": "specifyRangeA1",
+       "range": "B2:D3000"
+      }
+     }
+    }
+   },
+   "id": "2f23eb6a-7773-4fa9-a084-eb3327f4884f",
+   "name": "Baca Target Bulanan",
+   "type": "n8n-nodes-base.googleSheets",
+   "typeVersion": 4.5,
+   "position": [
+    1320,
+    160
+   ],
+   "credentials": {
+    "googleApi": {
+     "id": "9PAG5clr6jslUdIb",
+     "name": "Google Service Account account"
+    }
+   },
+   "alwaysOutputData": true,
+   "executeOnce": true,
+   "onError": "continueRegularOutput"
+  },
+  {
+   "parameters": {
+    "jsCode": "// Susun Omzet Tahunan: realisasi omzet per bulan per outlet (Jan–Des) + target bulanan dari tab target master.\n// Realisasi = kolom omzet \"Data Omzet Harian <tahun>\" tab data (Tunai + QRIS + Ojol, tanpa ongkir; sama dengan dashboard per bulan).\n// Kosong = belum ada data (null, bukan 0). Target null = belum diisi di tab target.\nconst OUTLET_DEFAULT = [['SPO','Sungai Poso'],['GWA','Gowa'],['SDG','Sudiang'],['BRB','Barombong'],['LMB','Limbung'],['PRE','Pare-Pare'],['TML','Tamalate']];\nconst t = v => (v == null ? '' : String(v).trim());\nconst num = v => {\n  if (typeof v === 'boolean' || v === null || v === undefined) return null;\n  if (typeof v === 'number') return isFinite(v) ? v : null;\n  let s = t(v).replace(/rp/ig, '').replace(/ /g, '');\n  if (!s || s === '-' || s.startsWith('#')) return null;\n  if (/^-?\\d{1,3}(\\.\\d{3})+(,\\d+)?$/.test(s)) s = s.replace(/\\./g, '').replace(',', '.'); else s = s.replace(/,/g, '');\n  const n = Number(s); return isFinite(n) ? n : null;\n};\nconst pad = n => String(n).padStart(2, '0');\nconst toISO = v => {\n  if (typeof v === 'number') { if (!(v > 20000 && v < 80000)) return null; const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 864e5); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }\n  const s = t(v); let m;\n  if ((m = /^(\\d{4})-(\\d{1,2})-(\\d{1,2})/.exec(s))) return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);\n  if ((m = /^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{4})/.exec(s))) return m[3] + '-' + pad(m[2]) + '-' + pad(m[1]);\n  return null;\n};\nconst toYM = v => { if (typeof v === 'number') { const d = toISO(v); return d ? d.slice(0, 7) : ''; } const m = /^(\\d{4})-(\\d{1,2})/.exec(t(v)); return m ? m[1] + '-' + pad(m[2]) : ''; };\nconst boolv = v => v === true || ['TRUE', 'YA', '1'].includes(t(v).toUpperCase());\n\n// ---- Sheet \"Target Bulanan\": blok P&L bulanan bertumpuk. Header blok: ACCOUNT | TARGET <BULAN> | REALISASI <BULAN> | ...\n// Baris ACHIEV tiap blok = target omzet (kolom C) & realisasi omzet (kolom D). Realisasi kosong/0 = belum ada (null).\nconst NAMA_BL = { JANUARI: 1, JAN: 1, FEBRUARI: 2, FEB: 2, MARET: 3, MAR: 3, APRIL: 4, APR: 4, MEI: 5, JUNI: 6, JUN: 6, JULI: 7, JUL: 7, AGUSTUS: 8, AGU: 8, AGT: 8, AGS: 8, AUG: 8,\n  SEPTEMBER: 9, SEP: 9, SEPT: 9, OKTOBER: 10, OKT: 10, OCT: 10, NOVEMBER: 11, NOV: 11, DESEMBER: 12, DES: 12, DEC: 12 };\nconst blDari = v => { const m = /^\\s*TARGET\\s+([A-Z]+)/i.exec(t(v)); return m ? NAMA_BL[m[1].toUpperCase()] || null : null; };\nfunction parseTB(rows, th) {\n  // rows: array [B, C, D] per baris (urutan sheet), atau objek n8n dengan header baris 2 (ACCOUNT, TARGET JANUARI, REALISASI JANUARI)\n  let cur = null; const out = {}, catat = [];\n  const arr = (rows || []).map(r => {\n    if (Array.isArray(r)) return r;\n    const ks = Object.keys(r).filter(k => k !== 'row_number'), kA = ks.find(k => /^ACCOUNT$/i.test(k.trim())), kT = ks.find(k => /^TARGET\\s/i.test(k.trim())), kR = ks.find(k => /^REALISASI\\s/i.test(k.trim()));\n    if (cur === null && kT) cur = blDari(kT);\n    if (kA) return [r[kA], kT ? r[kT] : null, kR ? r[kR] : null];\n    const vs = ks.map(k => r[k]), i = vs.findIndex(v => /^(ACHIEV|ACCOUNT)$/i.test(t(v)));  // header lain: cari label di baris, ambil 2 kolom sesudahnya\n    return i < 0 ? [null, null, null] : [vs[i], vs[i + 1], vs[i + 2]];\n  });\n  for (const [a, c, d] of arr) {\n    const A = t(a).toUpperCase();\n    const bh = blDari(c); if (bh || A === 'ACCOUNT') { cur = bh; continue; }  // header blok bulan: kolom C \"TARGET <BULAN>\"\n    if (A === 'ACHIEV' && cur) {\n      const b = th + '-' + pad(cur);\n      const tg = num(c), re = num(d), v = { target: tg !== null && tg > 0 ? Math.round(tg) : null, realisasi: re !== null && re > 0 ? Math.round(re) : null };\n      if (out[b]) {  // blok bulan yang sama muncul lagi (bertumpuk): pakai yang realisasinya terisi; bila sama-sama terisi, yang pertama\n        catat.push('Target Bulanan: blok bulan ke-' + cur + ' ada lebih dari satu' + (out[b].realisasi == null && v.realisasi != null ? ', dipakai blok yang realisasinya terisi' : ', dipakai blok pertama'));\n        if (!(out[b].realisasi == null && v.realisasi != null)) continue;\n      }\n      out[b] = v;\n    }\n  }\n  const bulan = Object.fromEntries(Object.keys(out).sort().map(b => [b, out[b]]));\n  return { bulan, list: Object.keys(bulan).map(b => ({ bulan: b, target: bulan[b].target, realisasi: bulan[b].realisasi, capaian: bulan[b].target && bulan[b].realisasi != null ? Math.round(bulan[b].realisasi / bulan[b].target * 1e4) / 1e4 : null })), catatan: catat };\n}\n\nfunction susun(inp) {\n  const { P, outletRows, targetRows, dataRows, gagal, catatan } = inp;\n  const th = String(P.tahun), BL = Array.from({ length: 12 }, (_, i) => th + '-' + pad(i + 1));\n  let outl = (outletRows || []).filter(r => t(r.kode) && (r.aktif === undefined || r.aktif === '' || boolv(r.aktif)))\n    .map(r => ({ kode: t(r.kode).toUpperCase(), nama: t(r.nama) || t(r.kode), urut: num(r.urutan) ?? 99, data_mulai: toISO(r.data_mulai) }));\n  if (!outl.length) { outl = OUTLET_DEFAULT.map(([kode, nama], i) => ({ kode, nama, urut: i + 1, data_mulai: null })); if (outletRows !== null) catatan.push('Tab outlet kosong, memakai daftar 7 outlet bawaan'); }\n  outl.sort((a, b) => a.urut - b.urut);\n  const K = outl.map(o => o.kode), nul = () => Object.fromEntries(K.map(k => [k, null])), nol = () => Object.fromEntries(K.map(k => [k, 0]));\n  const M = Object.fromEntries(BL.map(b => [b, { bulan: b, realisasi: nul(), target: nul(), hari: nol(), tgl_terakhir: nul(), hari_dalam_bulan: new Date(Date.UTC(+th, +b.slice(5), 0)).getUTCDate() }]));\n  for (const r of targetRows || []) {\n    const m = M[toYM(r.bulan)], k = t(r.outlet_kode).toUpperCase(); if (!m || !(k in m.target)) continue;\n    const v = num(r.target_bulanan); if (v !== null) m.target[k] = v;\n  }\n  const seen = new Set(), luar = new Set(); let nBaris = 0, ganda = 0;\n  for (const r of dataRows || []) {\n    const key = t(r.key); let kode = t(r.outlet_kode).toUpperCase(), tg = toISO(r.tanggal);\n    if (key.includes('|')) { const [k, d] = key.split('|'); kode = kode || k.toUpperCase(); tg = toISO(d) || tg; }\n    if (!tg) continue; const m = M[tg.slice(0, 7)]; if (!m) continue;\n    if (!(kode in m.realisasi)) { if (kode) luar.add(kode); continue; }\n    const omzet = num(r.omzet); if (omzet === null) continue;\n    const d = +tg.slice(8); if (seen.has(kode + tg)) ganda++; else { seen.add(kode + tg); m.hari[kode]++; }\n    m.realisasi[kode] = (m.realisasi[kode] || 0) + omzet; m.tgl_terakhir[kode] = Math.max(m.tgl_terakhir[kode] || 0, d); nBaris++;\n  }\n  if (ganda) catatan.push(ganda + ' baris tanggal ganda di data ' + th + ', dijumlah');\n  if (luar.size) catatan.push('Kode outlet di data tapi tidak ada di tab outlet: ' + [...luar].join(', '));\n  if (!nBaris && dataRows !== null) catatan.push('Belum ada omzet ' + th + ' di sheet pusat');\n  const tanpaTarget = BL.filter(b => Object.values(M[b].realisasi).some(v => v !== null) && !Object.values(M[b].target).some(v => v !== null)).map(b => +b.slice(5));\n  if (tanpaTarget.length) catatan.push('Target belum diisi di tab target untuk bulan ke-' + tanpaTarget.join(', '));\n  return { ok: true, versi: 2, tahun: +th, sumber: 'Sheet Pusat · Data Omzet Harian ' + th + ' (omzet Tunai+QRIS+Ojol) · target dari Rekap Omzet (Master)',\n    realisasi_cakupan: 'Tunai + QRIS + Ojol, tanpa ongkir', tahun_tersedia: P.tahun_tersedia || [], hari_ini: P.hari_ini || null,\n    outlet: outl.map(o => ({ kode: o.kode, nama: o.nama, data_mulai: o.data_mulai })), bulan: BL.map(b => M[b]), baris: nBaris,\n    total_brand: inp.tbRows ? Object.assign({ sumber: 'Sheet \"' + (P.tb_tab || 'Target Bulanan') + '\" (baris ACHIEV: kolom C target, kolom D realisasi) · total brand' }, parseTB(inp.tbRows, th), { dibaca: true }) : null,\n    gagal, catatan, generated_at: P.sekarang || null };\n}\n\n// ---- jalan (n8n) ----\nif (typeof $ === 'function') {\n  const baca = node => { for (const n of [node, 1, 2, 3, 4, 5].map((x, i) => i ? node + x : node)) { try { return $(n).all().map(it => it.json); } catch (e) {} } return null; };\n  const P = (baca('Pilih Tahun') || [{}])[0] || {};\n  const gagal = [].concat(P.gagal || []), catatan = [].concat(P.catatan || []);\n  const rowsOf = node => { const r = baca(node); if (r === null || r.some(x => x && x.error)) { gagal.push(node); return null; } return r.filter(x => x && Object.keys(x).some(k => k !== 'row_number')); };\n  if (!P.tahun) return [{ json: { ok: false, message: 'Tahun tidak terbaca (Baca Config gagal?)', gagal, catatan } }];\n  if (gagal.includes('Baca Config')) return [{ json: { ok: false, message: 'Tab config Rekap Omzet (Master) tidak terbaca (cek akses Service Account)', tahun: P.tahun, gagal, catatan } }];\n  const inp = { P, gagal, catatan, outletRows: rowsOf('Baca Outlet'), targetRows: rowsOf('Baca Target'),\n    tbRows: P.ada_tb ? (rows => { if (rows && !rows.length) { catatan.push('Tab ' + (P.tb_tab || 'Target Bulanan') + ' kosong'); return null; } if (rows === null) catatan.push('Sheet Target Bulanan tidak terbaca — bagikan (Viewer) ke Service Account'); return rows; })(rowsOf('Baca Target Bulanan')) : null,\n    dataRows: P.ada_doc === false ? (catatan.push('File data tahun ' + P.tahun + ' belum ada'), []) : rowsOf('Baca Data') };\n  if (inp.dataRows === null) return [{ json: { ok: false, message: 'Data omzet sheet pusat tidak terbaca (cek akses Service Account ke file Data Omzet Harian ' + P.tahun + ')', tahun: P.tahun, gagal, catatan } }];\n  return [{ json: susun(inp) }];\n}\n"
+   },
+   "id": "2b90c675-ec7b-4e5f-a499-e1a06026e4b8",
+   "name": "Susun Omzet Tahunan",
+   "type": "n8n-nodes-base.code",
+   "typeVersion": 2,
+   "position": [
+    1540,
+    160
+   ],
+   "onError": "continueRegularOutput",
+   "alwaysOutputData": true
+  },
+  {
+   "parameters": {
+    "respondWith": "json",
+    "responseBody": "={{ JSON.stringify($json) }}",
+    "options": {
+     "responseHeaders": {
+      "entries": [
+       {
+        "name": "Access-Control-Allow-Origin",
+        "value": "*"
+       },
+       {
+        "name": "Access-Control-Allow-Headers",
+        "value": "Content-Type"
+       },
+       {
+        "name": "Access-Control-Allow-Methods",
+        "value": "GET, OPTIONS"
+       },
+       {
+        "name": "Cache-Control",
+        "value": "no-store"
+       }
+      ]
+     }
+    }
+   },
+   "id": "64e0fe51-9e16-4ed3-a185-8a10e6787f28",
+   "name": "Respon Omzet Tahunan",
+   "type": "n8n-nodes-base.respondToWebhook",
+   "typeVersion": 1.1,
+   "position": [
+    1760,
+    160
+   ]
+  }
+ ],
+ "connections": {
+  "Webhook Omzet Tahunan": {
+   "main": [
+    [
+     {
+      "node": "Baca Config",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Baca Config": {
+   "main": [
+    [
+     {
+      "node": "Pilih Tahun",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Pilih Tahun": {
+   "main": [
+    [
+     {
+      "node": "Baca Outlet",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Baca Outlet": {
+   "main": [
+    [
+     {
+      "node": "Baca Target",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Baca Target": {
+   "main": [
+    [
+     {
+      "node": "Baca Data",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Baca Data": {
+   "main": [
+    [
+     {
+      "node": "Baca Target Bulanan",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Baca Target Bulanan": {
+   "main": [
+    [
+     {
+      "node": "Susun Omzet Tahunan",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  },
+  "Susun Omzet Tahunan": {
+   "main": [
+    [
+     {
+      "node": "Respon Omzet Tahunan",
+      "type": "main",
+      "index": 0
+     }
+    ]
+   ]
+  }
+ },
+ "active": false,
+ "settings": {
+  "executionOrder": "v1",
+  "timezone": "Asia/Makassar"
+ },
+ "pinData": {}
+}

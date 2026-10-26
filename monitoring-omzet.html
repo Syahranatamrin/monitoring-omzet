@@ -1,0 +1,735 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitoring Omzet Outlet – Pizza Nyantuy</title>
+<script>/* ?lanjutan=1 → tampilan lama (Ranking, Channel, dll.) */ (function () { const q = new URLSearchParams(location.search); if (q.get('lanjutan') === '1') { q.delete('lanjutan'); location.replace('monitoring-omzet-lanjutan.html' + (q.toString() ? '?' + q : '')); } })();</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* Gaya mengikuti dashboard Stampcard (referral-pizza-nyantuy): coklat #7a3e12, oranye #c8691c, krem #f5f1ea */
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#f5f1ea;color:#2b2118}
+header{background:#7a3e12;color:#fff;padding:10px 16px;display:flex;gap:8px;align-items:center;justify-content:space-between}header h1{font-size:18px;margin:0}
+.hr{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+#upd{color:#e9c9a8;font-size:11px;opacity:.85}
+.ib{border:0;background:transparent;color:#f2d5b8;cursor:pointer;font-size:14px;padding:2px 4px;border-radius:6px}.ib:hover{background:#ffffff1f}
+.src{display:none;padding:2px 8px;font-size:11px;background:#fff4d6;color:#7a5600;border-radius:999px;cursor:help}.src.on{display:inline-block}.src.demo{background:#2b2118;color:#fff}
+main{padding:14px;max-width:1100px;margin:auto}
+.banner{padding:8px 12px;border-radius:8px;margin-bottom:10px;display:none;font-size:13px}.banner.err{background:#fde2e1;color:#8a1c1c;display:block}
+.ilus{display:none;background:#2b2118;color:#fff;text-align:center;font-size:12.5px;font-weight:600;padding:6px}.ilus.on{display:block}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;align-items:center}select{padding:8px;border:1px solid #d6c8b8;border-radius:8px;font:inherit;background:#fff}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid #d6c8b8;border-radius:8px;overflow:hidden;background:#fff}.seg button{border:0;background:#fff;padding:8px 12px;cursor:pointer;font-weight:600;color:#7a3e12;font-size:13.5px}.seg button.on{background:#c8691c;color:#fff}
+.seg button small{display:block;font-weight:400;font-size:10.5px;color:inherit;opacity:.8}
+.card{background:#fff;border-radius:12px;padding:12px 14px;box-shadow:0 1px 3px #0001;min-width:0;margin-bottom:10px}
+.ct{display:flex;align-items:center;gap:6px;margin:0 0 6px}.ct h4{margin:0;font-size:15px}
+.tip{position:relative;display:inline-flex}.tip>button{border:1px solid #d6c8b8;background:#faf4ec;color:#8a7a6a;width:20px;height:20px;border-radius:50%;font:700 11px/1 system-ui,sans-serif;cursor:pointer;padding:0}
+.tip.w>button{border-color:#e0b64a;background:#fff4d6;color:#7a5600}
+.tip .pop{display:none;position:absolute;left:0;top:26px;z-index:20;width:min(320px,80vw);background:#2b2118;color:#fff;font-size:12px;line-height:1.5;padding:8px 10px;border-radius:8px;box-shadow:0 4px 14px #0003}
+.tip .pop p{margin:0 0 4px}.tip .pop p:last-child{margin:0}
+.tip:hover .pop,.tip.open .pop,.tip>button:focus-visible+.pop{display:block}
+#chartCard.loading .cw{opacity:.35}
+.cw{position:relative;height:460px}.nochart{display:flex;align-items:center;justify-content:center;height:100%;color:#9a8a7a;font-size:13px;text-align:center}
+.tgl{border:0;background:transparent;color:#c8691c;font-weight:600;font-size:13px;cursor:pointer;padding:4px 2px;margin:0 0 8px}
+.tw{overflow:auto;max-width:100%}table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}
+th{background:#faf4ec;font-size:12px;vertical-align:bottom;white-space:normal}th.r,td.r{text-align:right}td small{display:block;font-size:11px;color:#9a8a7a}
+td.sl,th.sl{position:sticky;left:0;background:#fff;z-index:1}th.sl{background:#faf4ec}
+tfoot td{font-weight:700;background:#faf4ec;border-top:2px solid #e8d5bd}tfoot td.sl{background:#faf4ec}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700}.st-g{background:#e3f4e4;color:#1b5e20}.st-y{background:#fff0c2;color:#7a5600}.st-r{background:#fde2e1;color:#b71c1c}.st-n{background:#eee;color:#666;font-weight:600}
+.neg{color:#b71c1c;font-weight:600}.pos{color:#1b5e20;font-weight:600}.muted{color:#9a8a7a}.hide{display:none!important}
+.rk{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}.rk .card{margin:0}.rk h4{margin:0 0 6px;font-size:14px;color:#7a3e12}
+.rk ol{list-style:none;margin:0;padding:0}.rk li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1e8dc;font-size:13.5px}.rk li:last-child{border-bottom:0}
+.rk .md{width:26px;text-align:center;font-size:17px;line-height:1}.rk .no{display:inline-block;width:20px;height:20px;line-height:20px;border-radius:50%;background:#faf4ec;color:#8a7a6a;font-size:11px;font-weight:700}
+.rk .nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk .nv{font-weight:700;color:#2b2118;white-space:nowrap}.rk li.j1 .nv{color:#c8691c}.rk .kos{color:#9a8a7a;font-size:13px;padding:6px 0}
+.vw{margin-bottom:8px}.vw .seg button{padding:7px 14px}
+.ttag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;background:#fff4d6;color:#7a5600;cursor:help}
+.juara{background:#fff7e0}.conote{font-size:11.5px;color:#8a7a6a;margin:-4px 0 4px}.dtag{display:inline-block;padding:0 6px;border-radius:9px;background:#eee;color:#777;font-size:11px;font-weight:600}
+.cov #bCh,.cov #bMain,.cov #ilus{display:none!important}.cov.chdemo #ilus{display:block!important}td small.mut{color:#8a7a6a;font-weight:400}
+.chv #bCh,.chv #bMain,.chv #ilus{display:none!important}.chv.chdemo #ilus{display:block!important}
+#chCard.loading .cw{opacity:.35}
+.thv #bCh,.thv #bMain,.thv #ilus{display:none!important}.thv.chdemo #ilus{display:block!important}
+.kpi{display:flex;gap:8px;flex-wrap:wrap;margin:2px 0 8px}.kp{background:#faf4ec;border-radius:10px;padding:6px 12px;min-width:140px}.kp small{display:block;font-size:11px;color:#8a7a6a}.kp b{display:block;font-size:17px;color:#2b2118;line-height:1.3}
+@media(max-width:640px){.rk{grid-template-columns:1fr}main{padding:10px}header h1{font-size:15px}th,td{padding:6px;font-size:12.5px}.seg button{padding:7px 9px;font-size:12.5px}.card{padding:10px}.vw .seg{display:grid;grid-template-columns:1fr 1fr;width:100%}.vw .seg button{padding:8px 6px}}
+</style></head><body>
+<header><h1>📈 Monitoring Omzet Outlet</h1><div class="hr"><span id="bCh" class="src"></span><small id="upd"></small><button class="ib" id="btnRef" title="Refresh" aria-label="Refresh">🔄</button></div></header>
+<div id="ilus" class="ilus">⚠️ Data contoh · Data ilustrasi, bukan data aktual Pizza Nyantuy</div>
+<main>
+<div id="bMain" class="banner"></div>
+<div class="vw"><span class="seg" id="fView" role="group" aria-label="Tampilan"><button data-v="outlet">Per Outlet</button><button data-v="channel">Per Channel</button><button data-v="chout">Channel per Outlet</button><button data-v="tahunan">Omzet Tahunan</button></span></div>
+<div class="filters">
+ <select id="fBulan" aria-label="Bulan"></select>
+ <select id="fChBulan" class="hide" aria-label="Bulan channel"></select>
+ <span class="seg hide" id="fChMode" role="group" aria-label="Periode channel"><button data-v="bulan">Per Bulan</button><button data-v="tahun">Tahunan</button></span>
+ <span class="seg hide" id="fChMet" role="group" aria-label="Ukuran"><button data-v="persen">% Capaian</button><button data-v="nominal">Realisasi</button></span>
+ <span class="seg hide" id="fCoMode" role="group" aria-label="Periode channel outlet"><button data-v="bulan">Per Bulan</button><button data-v="tahun">Tahunan</button></span>
+ <select id="fCoBulan" class="hide" aria-label="Bulan channel outlet"></select>
+ <select id="fCoOutlet" class="hide" aria-label="Outlet"></select>
+ <select id="fThTahun" class="hide" aria-label="Tahun"></select>
+ <select id="fThOutlet" class="hide" aria-label="Outlet tahunan"></select>
+ <span class="seg hide" id="fCoMet" role="group" aria-label="Ukuran"><button data-v="nominal">Nominal</button><button data-v="porsi">% Porsi</button></span>
+ <span class="seg" id="fMode" role="group" aria-label="Periode"><button data-v="minggu">Per Minggu</button><button data-v="bulan">Per Bulan</button></span>
+</div>
+<div class="filters" id="rowMinggu"><span class="seg" id="fMinggu" role="group" aria-label="Minggu"></span></div>
+<div class="card loading" id="chartCard">
+ <div class="ct"><h4 id="judul">Target vs Realisasi</h4><span class="tip" id="tip"><button type="button" aria-label="Keterangan">i</button><div class="pop" id="pop" role="tooltip"><p id="bjl"></p><p id="foot"></p><p id="info"></p></div></span></div>
+ <div class="cw"><canvas id="cOut"></canvas></div>
+</div>
+<div class="card hide" id="chCard">
+ <div class="ct"><h4 id="chJudul">Target vs Realisasi per Channel</h4><span class="ttag hide" id="chSrc"></span><span class="tip" id="chTip"><button type="button" aria-label="Keterangan">i</button><div class="pop" role="tooltip"><p id="chBjl"></p><p id="chFoot"></p><p id="chInfo"></p></div></span></div>
+ <div class="cw" id="chBox"><canvas id="cCh"></canvas></div>
+</div>
+<div class="card hide" id="coCard">
+ <div class="ct"><h4 id="coJudul">Channel per Outlet</h4><span class="ttag hide" id="coSrc"></span><span class="tip" id="coTip"><button type="button" aria-label="Keterangan">i</button><div class="pop" role="tooltip"><p id="coBjl"></p><p id="coFoot"></p><p id="coInfo"></p></div></span></div>
+ <div class="conote hide" id="coNote"></div>
+ <div class="cw" id="coBox"><canvas id="cCo"></canvas></div>
+</div>
+<div class="card hide" id="thCard">
+ <div class="ct"><h4 id="thJudul">Omzet Tahunan</h4><span class="ttag hide" id="thSrc"></span><span class="tip" id="thTip"><button type="button" aria-label="Keterangan">i</button><div class="pop" role="tooltip"><p id="thBjl"></p><p id="thFoot"></p><p id="thInfo"></p></div></span></div>
+ <div class="kpi hide" id="thKpi"></div>
+ <div class="conote hide" id="thNote"></div>
+ <div class="cw" id="thBox"><canvas id="cTh"></canvas></div>
+</div>
+<div class="rk" id="rank"><div class="card" id="rkM"><h4 id="rkMj">Top Ranking Minggu</h4><ol></ol></div><div class="card" id="rkB"><h4 id="rkBj">Top Ranking Bulan</h4><ol></ol></div></div>
+<button class="tgl" id="btnTbl" aria-expanded="false" aria-controls="tblCard">Lihat tabel ▾</button>
+<div class="card hide" id="tblCard"><div class="tw"><table id="tbl"><thead></thead><tbody></tbody><tfoot></tfoot></table></div></div>
+</main>
+<script>
+/* ===== Konfigurasi =====
+   Tampilan grafik: grafik Target vs Realisasi per outlet (utama), tabel ringkas dilipat di bawahnya. Filter: bulan · Per Minggu (Minggu 1–4 / Kumulatif s/d hari ini) · Per Bulan.
+   Tampilan lama (Ranking, Channel, KPI) tetap ada di monitoring-omzet-lanjutan.html atau buka halaman ini dengan ?lanjutan=1.
+   Parameter URL: ?bulan=YYYY-MM  ?periode=minggu|bulan|tahunan  ?minggu=1..4|kum  ?tampilan=channel|chout|tahunan  ?tahun=YYYY (Omzet Tahunan)  ?metrik=realisasi|porsi  ?outlet=KODE (Channel per Outlet, Tahunan)  ?demo=1
+   Tampilan Per Channel: CONTROL DASHBOARD Target Control per bulan / tahunan — lihat hitungChannel() & muatChannel().
+   1) GET {N8N_URL}/monitoring-omzet-pusat?bulan=YYYY-MM (Sheet Pusat) → {ok, bulan, minggu, minggu_berjalan, tgl_terakhir, hari_dalam_bulan, bobot_minggu,
+        outlet:[{nama, target_bulanan, target_per_minggu, realisasi_per_minggu, bobot_minggu}]}
+   2) gagal/kosong → cadangan CADANGAN[bulan] (format sama). 3) semua gagal → data contoh berlabel jelas. */
+const N8N_URL = 'https://n8n.srv1123014.hstgr.cloud/webhook';
+const PUSAT = '/monitoring-omzet-pusat';
+const CADANGAN = {'2026-10': {label: 'flow Oktober', path: '/monitoring-omzet-okt?sheet=okt'}, '2026-11': {label: 'flow November', path: '/monitoring-omzet'}};
+const BULAN_AWAL = '2025-12';
+const BOBOT_BAWAAN = [0.27, 0.27, 0.23, 0.23];   // hanya bila respons tidak membawa bobot (bobot asli dibaca flow dari tab target, beda tiap bulan)
+const AMBANG = {hijau: 1.00, kuning: 0.80};
+const QS = new URLSearchParams(location.search), DEMO_Q = QS.get('demo') === '1';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const BLS = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+const bulanLabel = b => { const m = /^(\d{4})-(\d{2})$/.exec(b || ''); return m ? BULAN[+m[2] - 1] + ' ' + m[1] : (b || '-'); };
+const rp = n => (n < 0 ? '−' : '') + 'Rp' + Math.round(Math.abs(n)).toLocaleString('id-ID');
+const rpS = n => { const a = Math.abs(n), s = n < 0 ? '−' : ''; return a >= 1e9 ? s + 'Rp' + (a / 1e9).toLocaleString('id-ID', {maximumFractionDigits: 2}) + ' M' : a >= 1e6 ? s + 'Rp' + (a / 1e6).toLocaleString('id-ID', {maximumFractionDigits: 1}) + ' jt' : s + 'Rp' + Math.round(a).toLocaleString('id-ID'); };
+const pc = x => (x * 100).toLocaleString('id-ID', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + '%';
+const sgn = v => (v > 0 ? '+' : '');
+const stCls = p => p == null ? 'st-n' : p >= AMBANG.hijau ? 'st-g' : p >= AMBANG.kuning ? 'st-y' : 'st-r';
+
+/* Data ilustrasi (dokumen SOP bagian H) — BUKAN data aktual. Minggu 3 berjalan s/d tgl 18 sebagai contoh. */
+const DEMO = {ok: true, demo: true, bulan: '2026-11', minggu: 2, minggu_berjalan: {minggu: 3, sampai_tgl: 18, hari: 4, hari_total: 7}, tgl_terakhir: 18, hari_dalam_bulan: 30, bobot_minggu: BOBOT_BAWAAN, outlet: [
+  {nama: 'Makassar A', target_bulanan: 100e6, realisasi_per_minggu: [23e6, 22e6, 12e6, null]},
+  {nama: 'Makassar B', target_bulanan: 90e6, realisasi_per_minggu: [25e6, 24e6, 14e6, null]},
+  {nama: 'Gowa A', target_bulanan: 80e6, realisasi_per_minggu: [21e6, 20e6, 11e6, null]},
+  {nama: 'Parepare', target_bulanan: 70e6, realisasi_per_minggu: [17e6, 16e6, 9e6, null]}]};
+DEMO.outlet.forEach((o, i) => { o.kode = 'D' + (i + 1); });
+/* Channel: SNAP_CH = salinan CONTROL DASHBOARD (Target Control Jul–Nov 2026) dibaca 27 Okt 2026 04.30 WITA, dipakai bila flow channel belum aktif/gagal.
+   DEMO_CH = ilustrasi untuk ?demo=1. */
+const SNAP_CH = {"ok":true,"tahun":2026,"sumber":"snapshot","generated_at":"2026-10-27T04:30:00+08:00","bulan":[{"bulan":"2026-07","file":"1PVm_RMx_zzM-g6frS9jQcSMLJuJ5jFRbs-ECid791lQ","ok":true,"channel":[{"channel":"TAKEAWAY OUTLET","target":532224000,"realisasi":272426350,"selisih":-259797650,"achieve":0.511864083543771},{"channel":"ONLINE ORGANIK","target":199584000,"realisasi":121445950,"selisih":-78138050,"achieve":0.6084954204745872},{"channel":"ONLINE ADS","target":310464000,"realisasi":198799150,"selisih":-111664850,"achieve":0.6403291524943311},{"channel":"LIVE SHOPPING","target":22176000,"realisasi":18205000,"selisih":-3971000,"achieve":0.8209325396825397},{"channel":"OJOL","target":44352000,"realisasi":48230384,"selisih":3878384,"achieve":1.0874455266955267},{"channel":"CRM","target":0,"realisasi":0,"selisih":0,"achieve":0}],"target":1108800000,"realisasi":659106834},{"bulan":"2026-08","file":"1g367ggwGkiy84iOcsPRg2qlvzEsufb5XS7O38Fu-G9M","ok":true,"channel":[{"channel":"TAKEAWAY OUTLET","target":514080000,"realisasi":253845350,"selisih":-260234650,"achieve":0.49378569483348894},{"channel":"ONLINE ORGANIK","target":192780000,"realisasi":114484750,"selisih":-78295250,"achieve":0.5938621744994294},{"channel":"ONLINE ADS","target":299880000,"realisasi":196063000,"selisih":-103817000,"achieve":0.6538048552754435},{"channel":"LIVE SHOPPING","target":21420000,"realisasi":17818000,"selisih":-3602000,"achieve":0.8318394024276378},{"channel":"OJOL","target":42840000,"realisasi":43815600,"selisih":975600,"achieve":1.0227731092436976},{"channel":"CRM","target":0,"realisasi":0,"selisih":0,"achieve":0}],"target":1071000000,"realisasi":626026700},{"bulan":"2026-09","file":"1_m7Q0s3tuqpAv2esxbYeyvBhRAMdc9A-s674VBn4lhk","ok":true,"channel":[{"channel":"TAKEAWAY OUTLET","target":565488000,"realisasi":312268250,"selisih":-253219750,"achieve":0.5522102148940384},{"channel":"ONLINE ORGANIK","target":212058000,"realisasi":92956500,"selisih":-119101500,"achieve":0.4383541295306001},{"channel":"ONLINE ADS","target":329868000,"realisasi":154899950,"selisih":-174968050,"achieve":0.4695816205269987},{"channel":"LIVE SHOPPING","target":23562000,"realisasi":27444000,"selisih":3882000,"achieve":1.1647568118156353},{"channel":"OJOL","target":47124000,"realisasi":36094600,"selisih":-11029400,"achieve":0.7659494100670571},{"channel":"CRM","target":0,"realisasi":0,"selisih":0,"achieve":0}],"target":1178100000,"realisasi":623663300},{"bulan":"2026-10","file":"1UoznzWqXZtCuSJZEbB7QKxombEumuKK80yCO1YZGGAQ","ok":true,"channel":[{"channel":"TAKEAWAY OUTLET","target":544320000,"realisasi":194804800,"selisih":-349515200,"achieve":0.3578865373309818},{"channel":"ONLINE ORGANIK","target":204120000,"realisasi":82383050,"selisih":-121736950,"achieve":0.40360106799921613},{"channel":"ONLINE ADS","target":317520000,"realisasi":134120000,"selisih":-183400000,"achieve":0.42239858906525574},{"channel":"LIVE SHOPPING","target":22680000,"realisasi":14283000,"selisih":-8397000,"achieve":0.6297619047619047},{"channel":"OJOL","target":45360000,"realisasi":27291852,"selisih":-18068148,"achieve":0.6016722222222223},{"channel":"CRM","target":0,"realisasi":0,"selisih":0,"achieve":0}],"target":1134000000,"realisasi":452882702},{"bulan":"2026-11","file":"1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM","ok":true,"channel":[{"channel":"TAKEAWAY OUTLET","target":480000000,"realisasi":0,"selisih":-480000000,"achieve":0.0},{"channel":"ONLINE ORGANIK","target":180000000,"realisasi":0,"selisih":-180000000,"achieve":0.0},{"channel":"ONLINE ADS","target":280000000,"realisasi":0,"selisih":-280000000,"achieve":0.0},{"channel":"LIVE SHOPPING","target":20000000,"realisasi":0,"selisih":-20000000,"achieve":0.0},{"channel":"OJOL","target":40000000,"realisasi":0,"selisih":-40000000,"achieve":0.0},{"channel":"CRM","target":0,"realisasi":0,"selisih":0,"achieve":0}],"target":1000000000,"realisasi":0}]};
+const DEMO_CH = {ok: true, tahun: 2026, sumber: 'demo', bulan: [['2026-09', [290e6, 240e6], [105e6, 112e6], [165e6, 120e6], [12e6, 9e6], [27e6, 25e6]], ['2026-10', [300e6, 330e6], [110e6, 95e6], [170e6, 150e6], [12e6, 13e6], [28e6, 31e6]], ['2026-11', [280e6, 150e6], [100e6, 52e6], [160e6, 70e6], [11e6, 4e6], [26e6, 12e6]]]
+  .map(([bulan, ...a]) => ({bulan, ok: true, channel: ['TAKEAWAY OUTLET', 'ONLINE ORGANIK', 'ONLINE ADS', 'LIVE SHOPPING', 'OJOL'].map((c, i) => ({channel: c, target: a[i][0], realisasi: a[i][1]})).concat([{channel: 'CRM', target: 0, realisasi: 0}])}))};
+
+/* ===== Perhitungan (fungsi murni, dipakai juga oleh tes) =====
+   Minggu: M1 tgl 1–7 · M2 8–14 · M3 15–21 · M4 22–akhir bulan.
+   Target minggu = target bulanan × bobot minggu bulan itu (dari flow; tiap bulan bisa beda). Minggu berjalan: target diprorata hari terisi ÷ hari minggu itu.
+   periode 'minggu' (p = 0..3): target minggu p vs realisasi minggu p.
+   periode 'kum': minggu 1 s/d minggu terakhir terisi (termasuk minggu berjalan prorata) — "s/d hari ini".
+   periode 'bulan': target bulanan penuh vs realisasi sebulan; bila bulan masih berjalan ditambah target s/d tgl terakhir (prorata) sebagai info.
+   Selisih = realisasi − target · % capaian = realisasi ÷ target · Sisa target = max(target penuh − realisasi, 0) (minggu: target minggu penuh; kumulatif/bulan: target bulanan). */
+function hitung(data, periode, p) {
+  const ym = /^(\d{4})-(\d{2})$/.exec(data.bulan || '');
+  const dim = +data.hari_dalam_bulan > 0 ? +data.hari_dalam_bulan : ym ? new Date(Date.UTC(+ym[1], +ym[2], 0)).getUTCDate() : 30;
+  const W = [[1, 7], [8, 14], [15, 21], [22, dim]];
+  const okB = b => Array.isArray(b) && b.length >= 4 && b.slice(0, 4).every(x => +x > 0);
+  const bobotG = okB(data.bobot_minggu) ? data.bobot_minggu.slice(0, 4).map(Number) : BOBOT_BAWAAN;
+  const mb = data.minggu_berjalan && +data.minggu_berjalan.hari_total > 0 ? data.minggu_berjalan : null;
+  const wB = mb ? +mb.minggu - 1 : -1, pro = mb ? Math.min(1, +mb.hari / +mb.hari_total) : 1;
+  const tgl = +data.tgl_terakhir || 0;
+  const wAkhir = mb ? wB : Math.max(0, Math.min(4, +data.minggu || 0) - 1);   // minggu terakhir yang sudah ada datanya
+  const adaData = tgl > 0 || +data.minggu > 0;
+  const val = v => { const n = typeof v === 'number' ? v : Number(String(v ?? '').replace(/[^\d.-]/g, '')); return isFinite(n) && n !== 0 && v !== '' && v != null ? n : null; };
+  const rows = (data.outlet || []).map(o => {
+    const T = val(o.target_bulanan), bb = okB(o.bobot_minggu) ? o.bobot_minggu.slice(0, 4).map(Number) : bobotG;
+    const tpm = [0, 1, 2, 3].map(j => { const v = val((o.target_per_minggu || [])[j]); return v != null ? v : T != null ? T * bb[j] : null; });
+    const tpmP = tpm.map((v, j) => v == null ? null : j === wB ? v * pro : v);   // prorata minggu berjalan
+    const rpm = [0, 1, 2, 3].map(j => val((o.realisasi_per_minggu || [])[j]));
+    const sum = a => { const v = a.filter(x => x != null); return v.length ? v.reduce((x, y) => x + y, 0) : null; };
+    let tgt, R, penuh, tSdHari = null;
+    if (periode === 'minggu') { tgt = tpmP[p]; R = rpm[p]; penuh = tpm[p]; }
+    else if (periode === 'kum') { const k = adaData ? wAkhir : 0; tgt = sum(tpmP.slice(0, k + 1)); R = sum(rpm.slice(0, k + 1)); penuh = T; }
+    else { tgt = T; R = sum(rpm); penuh = T; if (adaData && tgl < dim) tSdHari = sum(tpmP.slice(0, wAkhir + 1)); }
+    return {kode: String(o.kode || o.nama || '').trim(), nama: String(o.nama || '').trim() || '(tanpa nama)', T, tgt, R, sel: tgt != null && R != null ? R - tgt : null, p: tgt > 0 && R != null ? R / tgt : null,
+      sisa: penuh != null && R != null ? Math.max(penuh - R, 0) : penuh, tSdHari, pSdHari: tSdHari > 0 && R != null ? R / tSdHari : null};
+  });
+  const ada = rows.filter(r => r.R != null && r.tgt != null), s = (a, k) => a.reduce((t, r) => t + (r[k] || 0), 0);
+  const tot = {tgt: rows.some(r => r.tgt != null) ? s(rows, 'tgt') : null, R: rows.some(r => r.R != null) ? s(rows, 'R') : null, nIsi: ada.length, n: rows.length, tSdHari: rows.some(r => r.tSdHari != null) ? s(rows, 'tSdHari') : null};
+  const tIsi = s(ada, 'tgt');
+  tot.sel = ada.length ? s(ada, 'R') - tIsi : null; tot.p = ada.length && tIsi > 0 ? s(ada, 'R') / tIsi : null;
+  tot.sisa = rows.some(r => r.sisa != null) ? s(rows, 'sisa') : null; tot.pSdHari = tot.tSdHari > 0 && tot.R != null ? tot.R / tot.tSdHari : null;
+  // status periode
+  let status = 'selesai';
+  if (periode === 'minggu') status = !adaData || p > wAkhir ? 'belum' : p === wB ? 'berjalan' : 'selesai';
+  else if (periode === 'kum') status = !adaData ? 'belum' : mb ? 'berjalan' : 'selesai';
+  else status = !adaData ? 'belum' : tgl < dim ? 'berjalan' : 'selesai';
+  const sdTgl = periode === 'minggu' ? (status === 'berjalan' ? +mb.sampai_tgl : W[p][1]) : periode === 'kum' ? (mb ? +mb.sampai_tgl : W[wAkhir][1]) : (tgl || dim);
+  return {rows, tot, W, dim, mb, pro, wB, wAkhir, adaData, status, sdTgl, bobot: bobotG, periode, p};
+}
+
+/* ===== Per Channel: CONTROL DASHBOARD Target Control =====
+   GET {N8N_URL}/monitoring-channel-controldash?tahun=YYYY → {ok, tahun, bulan:[{bulan:'YYYY-MM', ok, channel:[{channel, target, realisasi, achieve, kontribusi, selisih}]}]}
+   Hanya respons versi 2 (flow loop per file) yang dipakai; respons versi lama → salinan SNAP_CH.
+   Per Bulan = target vs realisasi tiap channel di bulan itu. Hijau ≥ target, merah < target.
+   Tahunan = perbandingan antar bulan 2026: batang berkelompok (sumbu X bulan, satu seri per channel), ukuran % capaian (default) atau realisasi; 🏆 = channel tertinggi bulan itu.
+   CRM disembunyikan bila target & realisasi Rp0 (mengikuti sheet). */
+const CH_NAMA = {'TAKEAWAY OUTLET': 'Takeaway Outlet', 'ONLINE ORGANIK': 'Online Organik', 'ONLINE ADS': 'Online Ads', 'LIVE SHOPPING': 'Live Shopping', 'OJOL': 'Ojol', 'CRM': 'CRM'};
+const CH_WARNA = {'TAKEAWAY OUTLET': '#8d4a1f', 'ONLINE ORGANIK': '#f2a541', 'ONLINE ADS': '#3b7dd8', 'LIVE SHOPPING': '#c2185b', 'OJOL': '#2a9d8f', 'CRM': '#7e57c2'};
+const chNama = c => CH_NAMA[c] || c.toLowerCase().replace(/\b\w/g, x => x.toUpperCase());
+const chKey = c => String(c.channel || '').toUpperCase().trim().replace(/\s+/g, ' ');
+const blnOk = cd => (cd.bulan || []).filter(b => b.ok && Array.isArray(b.channel) && b.channel.length).sort((a, b) => a.bulan.localeCompare(b.bulan));
+const adaReal = b => b.channel.some(c => +c.realisasi > 0);
+function hitungChannel(cd, bulan) {
+  const b = blnOk(cd).find(x => x.bulan === bulan), rows = []; let crm = false;
+  (b ? b.channel : []).forEach(c => { const k = chKey(c), tgt = +c.target || 0, R = +c.realisasi || 0; if (!k) return;
+    if (k === 'CRM' && !tgt && !R) { crm = true; return; } rows.push({kode: k, nama: chNama(k), tgt, R, sel: R - tgt, p: tgt > 0 ? R / tgt : null}); });
+  const tot = {tgt: rows.reduce((a, r) => a + r.tgt, 0), R: rows.reduce((a, r) => a + r.R, 0)}; tot.sel = tot.R - tot.tgt; tot.p = tot.tgt > 0 ? tot.R / tot.tgt : null;
+  return {rows, tot, crm, adaR: !!b && adaReal(b), gagal: (cd.bulan || []).filter(x => !x.ok).map(x => x.bulan)};
+}
+function hitungTahunan(cd, metrik) {
+  const all = blnOk(cd), bl = all.filter(adaReal), lewat = all.filter(b => !adaReal(b)).map(b => b.bulan), ch = [];
+  bl.forEach(b => b.channel.forEach(c => { const k = chKey(c); if (k && !ch.includes(k) && (+c.target || +c.realisasi)) ch.push(k); }));
+  const sel = bl.map(b => { const m = {}; b.channel.forEach(c => { const k = chKey(c), tgt = +c.target || 0, R = +c.realisasi || 0; m[k] = {tgt, R, p: tgt > 0 ? R / tgt : null}; }); return m; });
+  const nilai = v => !v ? null : metrik === 'nominal' ? v.R : v.p;
+  const juara = sel.map(m => { let best = null; ch.forEach(k => { const v = nilai(m[k]); if (v != null && v > 0 && (best == null || v > nilai(m[best]))) best = k; }); return best; });
+  return {bulan: bl.map(b => b.bulan), ch, sel, juara, lewat, nilai, gagal: (cd.bulan || []).filter(x => !x.ok).map(x => x.bulan)};
+}
+
+/* ===== Channel per Outlet (realisasi saja, tanpa target) =====
+   Sumber: respons flow pusat (GET monitoring-omzet-pusat?bulan=) bagian channel.outlet[]: Takeaway(Offline) & Ojol dari tab ChannelHarian kasir,
+   Online Organik/Ads/Live Shopping dari tab OnlineHarian admin, "Online (belum dipisah)" = WhatsApp kasir di hari admin belum isi.
+   Per Bulan = batang bertumpuk per outlet. Tahunan = batang bertumpuk per bulan (sumbu X bulan) untuk semua outlet / satu outlet; 🏆 = channel terbesar bulan itu.
+   Organik/Ads/Live selalu tampil (Rp0 bila admin belum isi). 'data x%' = porsi omzet Penutupan Kasir yang sudah terpecah per channel. */
+const CO_CH = [['offline', 'Takeaway Outlet', 'TAKEAWAY OUTLET'], ['organik', 'Online Organik', 'ONLINE ORGANIK'], ['ads', 'Online Ads', 'ONLINE ADS'], ['live', 'Live Shopping', 'LIVE SHOPPING'], ['ojol', 'Ojol', 'OJOL'], ['onk', 'Online (belum dipisah)', null]];
+const coWarna = c => c[2] ? CH_WARNA[c[2]] : '#c9c1b8';
+function coRow(o) {
+  const v = {offline: +o.offline || 0, organik: +o.organik || 0, ads: +o.ads || 0, live: +o.live || 0, ojol: +o.ojol || 0, onk: +o.online_kasir || 0};
+  const tot = Object.values(v).reduce((a, x) => a + x, 0), om = +o.omzet_bulan || 0, cak = o.cakupan == null ? 1 : +o.cakupan;
+  return {kode: o.kode, nama: o.nama || o.kode, v, tot, omzet: om, ada: tot > 0, data: !tot ? 0 : Math.min(1, om > 0 ? tot / om : 1, cak)};
+}
+function coGabung(rows, kode, nama) {
+  const v = {}; CO_CH.forEach(([k]) => v[k] = rows.reduce((a, r) => a + r.v[k], 0));
+  const tot = rows.reduce((a, r) => a + r.tot, 0), om = rows.reduce((a, r) => a + r.omzet, 0);
+  return {kode, nama, v, tot, omzet: om, ada: tot > 0, data: !tot ? 0 : om > 0 ? Math.min(1, rows.reduce((a, r) => a + r.data * r.omzet, 0) / om) : 1};
+}
+const coRows = d => ((d && d.channel && d.channel.outlet) || []).map(coRow);
+const coBulanList = () => [...$('fBulan').options].map(o => o.value).filter(v => v >= '2026-07' && v.slice(0, 4) === '2026').sort();
+function demoCo(bl) {
+  const f = {'2026-09': .9, '2026-10': 1, '2026-11': .55}[bl]; if (!f) return {ok: true, bulan: bl, channel: {outlet: []}};
+  const mix = [[.42, .16, .22, .03, .09, .08], [.36, .2, .26, .05, .07, .06], [.5, .12, .16, .02, .12, .08], [.3, .22, .3, .06, .06, .06]];
+  return {ok: true, demo: true, bulan: bl, channel: {outlet: DEMO.outlet.map((o, i) => { const T = (60 + i * 7) * 1e6 * f, m = mix[(i + (bl === '2026-09' ? 1 : 0)) % 4];
+    return {kode: o.kode, nama: o.nama, offline: T * m[0], organik: T * m[1], ads: T * m[2], live: T * m[3], ojol: T * m[4], online_kasir: T * m[5], omzet_bulan: i === 3 ? T / .7 : T, cakupan: i === 3 ? .7 : 1}; })}};
+}
+const CO_CACHE = {};
+function ambilCo(bl) {
+  if (DEMO_Q) return Promise.resolve({d: demoCo(bl), src: 'demo'});
+  if (DATA && DATA.bulan === bl && DATA_SRC && DATA_SRC.jenis === 'pusat' && DATA.channel) return Promise.resolve({d: DATA, src: 'pusat'});
+  if (!CO_CACHE[bl]) CO_CACHE[bl] = ambil(PUSAT + '?bulan=' + bl).then(d => ({d, src: 'pusat'}), e => { delete CO_CACHE[bl]; return {err: e.message}; });
+  return CO_CACHE[bl];
+}
+
+/* ===== Omzet Tahunan (tab ke-4) =====
+   Realisasi per bulan Jan–Des = omzet Sheet Pusat (Tunai + QRIS + Ojol, tanpa ongkir), target = target_bulanan tab target (Master).
+   Sumber: 1) GET {N8N_URL}/monitoring-omzet-tahunan?tahun=YYYY (flow opsional, 1 panggilan) → {ok, tahun, outlet:[{kode,nama,data_mulai}], bulan:[{bulan, realisasi:{KODE:n|null}, target:{..}, hari:{..}, tgl_terakhir:{..}, hari_dalam_bulan}]}
+   2) belum ada/gagal → flow pusat per bulan (?bulan=YYYY-MM) satu per satu (berurutan + ulang 2×, grafik terisi bertahap). Bulan kosong = null (celah), bukan 0. */
+const TH_WARNA = ['#c8691c', '#3b7dd8', '#2a9d8f', '#c2185b', '#7e57c2', '#8d4a1f', '#e0a800', '#607d8b'];
+const TH = {}, TH_EP = {ada: null};
+/* Total brand per bulan dari sheet "pizza nyantuy target 2026" (id 12oMKjxQ6LUwgi0icBDeV2VhPbRz4LAUoZxMyrjhl8sY) tab "Target Bulanan",
+   baris ACHIEV tiap blok bulan: kolom C = target omzet, kolom D = realisasi omzet. Dipakai di mode "Total semua outlet" untuk bulan yang realisasinya ada (Jan–Sep);
+   bulan lain tetap dari flow pusat. Sumber utama = field total_brand dari flow Omzet Tahunan; bila flow belum aktif / gagal baca sheet → salinan di bawah (dibaca 27 Okt 2026). */
+const TB_SALINAN = {tgl: '27 Okt', tahun: {2026: {'2026-01': [871200000, 742633112], '2026-02': [929280000, 671734813], '2026-03': [1016400000, 773442692], '2026-04': [1043460000, 791055969],
+  '2026-05': [1051974000, 799951952], '2026-06': [1083852000, 672789144], '2026-07': [1108800000, 657222242], '2026-08': [1071000000, 626124650], '2026-09': [1178100000, 590542950],
+  '2026-10': [1134000000, null], '2026-11': [1413720000, null], '2026-12': [1360800000, null]}}};
+const tbSalinan = y => TB_SALINAN.tahun[y] ? {src: 'salinan', bulan: Object.fromEntries(Object.entries(TB_SALINAN.tahun[y]).map(([b, [t, r]]) => [b, {target: t, realisasi: r}]))} : null;
+let TH_TAHUN = null, TH_OUTLET = QS.get('outlet') || 'semua', CHART_TH = null;
+const thKosong = (tahun, outl) => ({tahun, outlet: outl || [], src: null, done: false, catatan: [], gagal: [],
+  bulan: Array.from({length: 12}, (_, i) => ({bulan: tahun + '-' + String(i + 1).padStart(2, '0'), st: 'pending', realisasi: {}, target: {}, hari: {}, tgl_terakhir: {}, dim: new Date(Date.UTC(tahun, i + 1, 0)).getUTCDate()}))});
+const thWita = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10);
+function thDariPusat(m, d) {
+  m.st = 'ok'; m.realisasi = {}; m.target = {}; m.hari = {}; m.tgl_terakhir = {};
+  (d.outlet || []).forEach(o => { const k = o.kode || o.nama, vs = (o.realisasi_per_minggu || []).filter(v => v != null);
+    m.realisasi[k] = vs.length ? vs.reduce((a, b) => a + +b, 0) : null; m.target[k] = o.target_bulanan != null && o.target_bulanan !== '' ? +o.target_bulanan : null;
+    m.hari[k] = (o.hari_terisi || []).reduce((a, b) => a + (+b || 0), 0); m.tgl_terakhir[k] = o.tgl_terakhir || null; });
+}
+function demoTh(tahun) {
+  const T = thKosong(tahun, DEMO.outlet.map(o => ({kode: o.kode, nama: o.nama}))); T.src = 'demo'; T.done = true;
+  if (tahun !== 2026) { T.bulan.forEach(m => m.st = 'ok'); return T; }
+  const pola = [.82, .78, .9, .93, .97, .88, .95, 1, .9, 1.04, .62];
+  T.bulan.forEach((m, i) => { m.st = 'ok'; if (i > 10) return;
+    DEMO.outlet.forEach((o, j) => { const base = (80 + j * 8) * 1e6; m.realisasi[o.kode] = j === 3 && i < 2 ? null : Math.round(base * pola[i] * (1 + .03 * ((i + j) % 3))); m.target[o.kode] = i >= 6 ? Math.round(base * 1.1) : null;
+      m.tgl_terakhir[o.kode] = m.realisasi[o.kode] == null ? null : i === 10 ? 18 : m.dim; m.hari[o.kode] = m.tgl_terakhir[o.kode] || 0; }); });
+  return T;
+}
+async function thMuat(tahun) {
+  if (TH[tahun]) return;
+  if (DEMO_Q) { TH[tahun] = demoTh(tahun); return; }
+  const T = TH[tahun] = thKosong(tahun); T.tb = tbSalinan(tahun); const gambar = () => { if (VIEW === 'tahunan' && TH_TAHUN === tahun) renderTh(); };
+  if (TH_EP.ada !== false) {
+    try { const d = await ambil('/monitoring-omzet-tahunan?tahun=' + tahun);
+      if (Array.isArray(d.bulan) && d.bulan.length === 12) { TH_EP.ada = true; T.outlet = d.outlet || []; T.src = 'tahunan'; T.catatan = (d.catatan || []).map(String); T.gagal = d.gagal || [];
+        if (d.total_brand && d.total_brand.dibaca && d.total_brand.bulan && Object.keys(d.total_brand.bulan).length) T.tb = {src: 'flow', bulan: d.total_brand.bulan}; else if (T.tb) T.tbFlowGagal = true;
+        d.bulan.forEach((b, i) => Object.assign(T.bulan[i], {st: 'ok', realisasi: b.realisasi || {}, target: b.target || {}, hari: b.hari || {}, tgl_terakhir: b.tgl_terakhir || {}}));
+        T.done = true; gambar(); return; }
+    } catch (e) { if (/HTTP 404/.test(e.message)) TH_EP.ada = false; }
+  }
+  T.src = 'pusat'; const kini = thWita().slice(0, 7), akhir = (() => { const [y, mo] = kini.split('-').map(Number); const n = mo === 12 ? (y + 1) + '-01' : y + '-' + String(mo + 1).padStart(2, '0'), ds = y + '-12'; return n > ds ? n : ds; })();  // s/d Des tahun berjalan: bulan depan kosong tetap dibaca untuk garis target
+  T.bulan.forEach(m => { if (m.bulan < BULAN_AWAL || m.bulan > akhir) m.st = 'ok'; });
+  gambar();
+  for (const m of T.bulan.filter(x => x.st === 'pending')) {
+    if (TH[tahun] !== T) return;
+    m.st = 'load'; gambar(); let r = null;
+    for (let i = 0; i < 3; i++) { r = await ambilCo(m.bulan); if (!r.err) break; await new Promise(z => setTimeout(z, 1500 * (i + 1))); }
+    if (TH[tahun] !== T) return;
+    if (r.err) { m.st = 'err'; m.err = r.err; } else { thDariPusat(m, r.d); (r.d.outlet || []).forEach(o => { const k = o.kode || o.nama; if (!T.outlet.some(x => x.kode === k)) T.outlet.push({kode: k, nama: o.nama || k}); }); }
+    gambar();
+  }
+  T.done = true; gambar();
+}
+function thSeri(T, sc, pakaiTB) {
+  const kini = thWita(), K = T.outlet.map(o => o.kode), nmO = k => (T.outlet.find(o => o.kode === k) || {}).nama || k;
+  return T.bulan.map((m, i) => {
+    const ks = sc === 'semua' ? K : [sc], ada = ks.filter(k => m.realisasi[k] != null), tg = ks.filter(k => m.target[k] != null);
+    const R = ada.length ? ada.reduce((a, k) => a + m.realisasi[k], 0) : null, Tg = tg.length ? tg.reduce((a, k) => a + m.target[k], 0) : null;
+    const sd = ada.length ? Math.max(...ada.map(k => +m.tgl_terakhir[k] || 0)) : 0, berjalan = R != null && sd > 0 && sd < m.dim;
+    const hari = sc !== 'semua' && R != null ? +m.hari[sc] || 0 : null;
+    const s = {i, bulan: m.bulan, st: m.st, R, T: Tg, n: ada.length, N: ks.length, sd, berjalan, hari, kurang: sc === 'semua' ? ks.filter(k => m.realisasi[k] == null).map(nmO) : [],
+      kini: m.bulan === kini.slice(0, 7), p: R != null && Tg > 0 ? R / Tg : null};
+    const tb = pakaiTB && T.tb && T.tb.bulan[m.bulan];
+    if (tb && tb.realisasi != null) Object.assign(s, {tb: true, pusatR: m.st === 'ok' ? R : undefined, pusatT: Tg, R: tb.realisasi, T: tb.target ?? Tg, st: 'ok', berjalan: false, kurang: [], n: ks.length, sd: m.dim,
+      p: (tb.target ?? Tg) > 0 ? tb.realisasi / (tb.target ?? Tg) : null});
+    else if (tb && tb.target != null) s.tbT = tb.target;
+    return s;
+  }).map((s, i, A) => { const pv = i ? A[i - 1] : null;
+    if (s.R != null && pv && pv.R > 0 && !pv.berjalan) s.mom = s.berjalan ? (s.R / s.sd) / (pv.R / T.bulan[i - 1].dim) - 1 : s.R / pv.R - 1, s.momRata = s.berjalan;
+    else s.mom = null; return s; });
+}
+function renderTh() {
+  const hp = window.innerWidth < 640, sel = $('fThTahun'), wita = thWita(), y0 = +BULAN_AWAL.slice(0, 4), y1 = +wita.slice(0, 4);
+  const thn = []; for (let y = y1; y >= y0; y--) thn.push(y);
+  if (sel.options.length !== thn.length) sel.innerHTML = thn.map(y => `<option value="${y}">${y}</option>`).join('');
+  if (!TH_TAHUN) { const q = +QS.get('tahun'); TH_TAHUN = thn.includes(q) ? q : y1; }
+  sel.value = TH_TAHUN; thMuat(TH_TAHUN);
+  const T = TH[TH_TAHUN], fo = $('fThOutlet');
+  const ho = '<option value="semua">Total semua outlet</option><option value="per">Per outlet (bandingkan)</option>' + T.outlet.map(o => `<option value="${esc(o.kode)}">${esc(o.nama)}</option>`).join('');
+  if (fo.dataset.h !== ho) { fo.innerHTML = ho; fo.dataset.h = ho; }
+  if (!['semua', 'per'].includes(TH_OUTLET) && T.done && !T.outlet.some(o => o.kode === TH_OUTLET)) TH_OUTLET = 'semua';
+  fo.value = T.outlet.some(o => o.kode === TH_OUTLET) || ['semua', 'per'].includes(TH_OUTLET) ? TH_OUTLET : 'semua';
+  const per = TH_OUTLET === 'per', sc = per || !T.outlet.some(o => o.kode === TH_OUTLET) ? 'semua' : TH_OUTLET, nmSc = sc === 'semua' ? '' : (T.outlet.find(o => o.kode === sc) || {}).nama;
+  $('thJudul').textContent = 'Omzet Tahunan ' + TH_TAHUN + (per ? ' · per outlet' : nmSc ? ' · ' + nmSc : '');
+  const src = $('thSrc'), pakaiTB = T.tb && T.src !== 'demo' && TH_OUTLET !== 'per' && !T.outlet.some(o => o.kode === TH_OUTLET) && !!thSeri(T, 'semua', true).some(s => s.tb), salinan = pakaiTB && T.tb.src === 'salinan';
+  src.classList.toggle('hide', !DEMO_Q && !salinan); src.textContent = DEMO_Q ? 'Data contoh' : 'salinan ' + TB_SALINAN.tgl;
+  src.title = DEMO_Q ? 'Mode demo (?demo=1): data ilustrasi, bukan data aktual.' : 'Total Jan–Sep memakai salinan sheet Target Bulanan per ' + TB_SALINAN.tgl + ' (flow Omzet Tahunan belum aktif atau belum bisa membaca sheet itu).';
+  const S = thSeri(T, sc, !per && sc === 'semua'), SK = per ? thSeri(T, 'semua', true) : S, isiK = SK.filter(s => s.R != null), isi = S.filter(s => s.R != null), muatN = T.bulan.filter(m => m.st === 'load' || m.st === 'pending').length, err = T.bulan.filter(m => m.st === 'err');
+  const tot = isiK.reduce((a, s) => a + s.R, 0), top = isiK.filter(s => !s.berjalan).reduce((a, s) => !a || s.R > a.R ? s : a, null) || isiK.reduce((a, s) => !a || s.R > a.R ? s : a, null);
+  const last = isiK[isiK.length - 1], rentang = isiK.length ? BLS[isiK[0].i] + (isiK.length > 1 ? '–' + BLS[last.i] : '') + (last.berjalan ? ' (s/d ' + last.sd + ' ' + BLS[last.i] + ')' : '') : '';
+  $('thKpi').innerHTML = isiK.length ? `<div class="kp"><small>Total ${TH_TAHUN}${TH_TAHUN === y1 && isiK.length < 12 ? ' (YTD)' : ''}</small><b>${rpS(tot)}</b><small>${esc(rentang)}</small></div>` +
+    (top ? `<div class="kp"><small>🏆 Bulan tertinggi</small><b>${esc(BULAN[top.i])}</b><small>${rpS(top.R)}</small></div>` : '') : '';
+  $('thKpi').classList.toggle('hide', !isiK.length);
+  const note = muatN ? `Memuat data per bulan… ${12 - muatN}/12` : '';
+  $('thNote').textContent = note; $('thNote').classList.toggle('hide', !note);
+  // info (ikon i)
+  $('thBjl').textContent = 'Omzet per bulan Jan–Des (Tunai + QRIS + Ojol, tanpa ongkir). Garis putus-putus = target bulanan. Bulan tanpa data dibiarkan kosong (bukan nol). Angka kecil hijau/merah = naik/turun dari bulan sebelumnya; bulan berjalan dibanding rata-rata per hari (≈).';
+  const sTB = S.filter(s => s.tb), rgTB = sTB.length ? BLS[sTB[0].i] + (sTB.length > 1 ? '–' + BLS[sTB[sTB.length - 1].i] : '') : '';
+  $('thFoot').textContent = (sTB.length ? 'Total & target ' + rgTB + ': sheet "Target Bulanan" (baris ACHIEV)' + (salinan ? ', salinan ' + TB_SALINAN.tgl : '') + '. Bulan lain dan per outlet: ' : 'Sumber: ') + 'Sheet Pusat (Data Omzet Harian ' + TH_TAHUN + ', hasil sinkron Penutupan Kasir) · target dari tab target Rekap Omzet (Master)' + (T.src === 'pusat' ? ' · dibaca per bulan lewat flow pusat' : T.src === 'tahunan' ? ' · flow Omzet Tahunan' : '') + '.';
+  const inf = [];
+  if (TH_TAHUN <= +BULAN_AWAL.slice(0, 4) && T.src !== 'demo') inf.push('Data omzet di Sheet Pusat baru mulai ' + bulanLabel(BULAN_AWAL) + '; bulan sebelumnya belum diinput.');
+  const errL = err.filter(m => !S.some(s => s.tb && s.bulan === m.bulan)); if (errL.length) inf.push('Tidak terbaca: ' + errL.map(m => BULAN[+m.bulan.slice(5) - 1]).join(', ') + ' (tekan 🔄 untuk coba lagi).');
+  if (sc === 'semua') { const kr = S.filter(s => s.R != null && s.kurang.length); if (kr.length) inf.push('Belum lengkap: ' + kr.map(s => BLS[s.i] + ' tanpa ' + s.kurang.join(', ')).join('; ') + '. Naik/turun bulanan ikut terpengaruh outlet yang belum/baru tercatat.'); }
+  const jtS = v => (v >= 0 ? '+' : '−') + rpS(Math.abs(v));
+  if (sTB.length) { const df = sTB.filter(s => s.pusatR !== undefined && Math.abs(s.R - (s.pusatR || 0)) >= 1000);
+    if (df.length) inf.push('Selisih Target Bulanan vs Sheet Pusat: ' + df.map(s => BLS[s.i] + ' ' + jtS(s.R - (s.pusatR || 0))).join(', ') + ' (pusat lebih kecil = outlet belum tercatat di Sheet Pusat).');
+    if (T.tbFlowGagal) inf.push('Flow Omzet Tahunan belum bisa membaca sheet Target Bulanan (bagikan Viewer ke Service Account); memakai salinan ' + TB_SALINAN.tgl + '.'); }
+  if (!per && sc === 'semua') S.filter(s => s.tbT != null && !s.tb && !['err', 'load', 'pending'].includes(s.st) && (s.T == null || Math.abs(s.tbT - s.T) >= 1000)).forEach(s => inf.push('Target ' + BLS[s.i] + ' di Target Bulanan ' + rpS(s.tbT) + (s.T == null ? ', belum ada di tab target Master (grafik memakai Master).' : ', di tab target Master ' + rpS(s.T) + ' (grafik memakai Master).')));
+  if (per || sc !== 'semua') { const ks = per ? T.outlet.map(o => o.kode) : [sc], tel = ks.map(k => { const j = T.bulan.findIndex(m => m.realisasi[k] != null), nm = (T.outlet.find(o => o.kode === k) || {}).nama || k;
+      return j > 0 ? nm + ' mulai ' + BLS[j] : j === 0 && (+T.bulan[0].hari[k] || 0) < T.bulan[0].dim * .8 ? nm + ' Jan baru ' + T.bulan[0].hari[k] + ' hari' : ''; }).filter(Boolean);
+    if (T.tb && T.src !== 'demo') inf.push('Per outlet dari Sheet Pusat' + (tel.length ? '; Jan–Jun belum lengkap (' + tel.join(', ') + ')' : '') + '. Total brand Jan–Sep di mode "Total semua outlet" memakai sheet Target Bulanan.'); }
+  const tTanpa = isi.filter(s => s.T == null).map(s => BLS[s.i]); if (tTanpa.length && !per) inf.push('Target belum diisi: ' + tTanpa.join(', ') + '.');
+  T.catatan.filter(c => !/^Target belum diisi/.test(c) && !(T.tbFlowGagal && /^Sheet Target Bulanan tidak terbaca/.test(c))).forEach(c => inf.push(c));
+  $('thInfo').textContent = inf.join(' '); $('thInfo').classList.toggle('hide', !inf.length); $('thTip').classList.toggle('w', !!err.length);
+  // tabel
+  const mom = s => s.mom == null ? '—' : `<span class="${s.mom >= 0 ? 'pos' : 'neg'}">${s.momRata ? '≈' : ''}${sgn(s.mom)}${pc(s.mom)}</span>`;
+  const tag = s => s.st === 'err' ? '<span class="dtag">tidak terbaca</span>' : s.st === 'load' || s.st === 'pending' ? '<span class="dtag">memuat…</span>' : s.R == null ? '<span class="dtag">belum ada</span>' :
+    (s.berjalan ? `<span class="dtag">s/d tgl ${s.sd}</span> ` : '') + (s.n < s.N ? `<span class="dtag">${s.n}/${s.N} outlet</span>` : '') + (s.hari != null && !s.berjalan && s.hari < T.bulan[s.i].dim ? `<span class="dtag">${s.hari} hari</span>` : '');
+  if (per) {
+    $('tbl').tHead.innerHTML = '<tr><th class="sl">Bulan</th>' + T.outlet.map(o => `<th class="r">${esc(o.nama)}</th>`).join('') + '<th class="r">Total</th></tr>';
+    $('tbl').tBodies[0].innerHTML = S.map(s => { const m = T.bulan[s.i]; return `<tr><td class="sl"><b>${esc(BULAN[s.i])}</b> ${s.R == null || s.berjalan ? tag(s) : ''}</td>` + T.outlet.map(o => `<td class="r">${m.realisasi[o.kode] != null ? rp(m.realisasi[o.kode]) : '—'}</td>`).join('') + `<td class="r"><b>${s.R != null ? rp(s.R) : '—'}</b></td></tr>`; }).join('');
+    $('tbl').tFoot.innerHTML = isi.length ? '<tr><td class="sl">Total</td>' + T.outlet.map(o => { const v = T.bulan.filter(m => m.realisasi[o.kode] != null); return `<td class="r">${v.length ? rp(v.reduce((a, m) => a + m.realisasi[o.kode], 0)) : '—'}</td>`; }).join('') + `<td class="r">${rp(isi.reduce((a, s) => a + s.R, 0))}</td></tr>` : '';
+  } else {
+    $('tbl').tHead.innerHTML = '<tr><th class="sl">Bulan</th><th class="r">Omzet</th><th class="r">Target</th><th class="r">% Capaian</th><th class="r">vs bulan lalu</th><th></th></tr>';
+    $('tbl').tBodies[0].innerHTML = S.map(s => `<tr${top && s.i === top.i ? ' class="juara"' : ''}><td class="sl"><b>${top && s.i === top.i ? '🏆 ' : ''}${esc(BULAN[s.i])}</b></td><td class="r">${s.R != null ? rp(s.R) : '—'}</td><td class="r">${s.T != null ? rp(s.T) : '—'}</td>` +
+      `<td class="r">${s.p != null ? `<span class="tag ${s.berjalan ? 'st-n' : stCls(s.p)}">${pc(s.p)}</span>` : '—'}</td><td class="r">${mom(s)}</td><td>${tag(s)}</td></tr>`).join('');
+    const bt = isi.filter(s => s.T != null), sT = bt.reduce((a, s) => a + s.T, 0), sR = bt.reduce((a, s) => a + s.R, 0);
+    $('tbl').tFoot.innerHTML = isi.length ? `<tr><td class="sl">Total</td><td class="r">${rp(tot)}</td><td class="r">${bt.length ? rp(sT) + `<small>${BLS[bt[0].i]}–${BLS[bt[bt.length - 1].i]}</small>` : '—'}</td><td class="r">${bt.length && sT > 0 ? pc(sR / sT) + '<small>bulan bertarget</small>' : '—'}</td><td></td><td></td></tr>` : '';
+  }
+  // grafik
+  if (CHART_TH) { CHART_TH.destroy(); CHART_TH = null; }
+  const box = $('thBox');
+  if (!box.querySelector('canvas') || box.querySelector('.nochart')) box.innerHTML = '<canvas id="cTh"></canvas>';
+  if (!window.Chart) { box.innerHTML = '<div class="nochart">Grafik tidak bisa dimuat. Buka tabel di bawah.</div>'; bukaTabel(true); return; }
+  if (!isi.length && !muatN) { box.style.height = '140px'; box.innerHTML = `<div class="nochart">${err.length && T.bulan.every(m => m.st === 'err' || !Object.values(m.realisasi).some(v => v != null)) ? 'Data ' + TH_TAHUN + ' tidak terbaca. Tekan 🔄 untuk coba lagi.' : 'Belum ada data omzet ' + TH_TAHUN + '.'}</div><canvas id="cTh" class="hide"></canvas>`; return; }
+  box.style.height = hp ? '360px' : '420px';
+  const jt = v => (v / 1e6).toLocaleString('id-ID', {maximumFractionDigits: v >= 1e9 ? 0 : 1}), lbl = v => hp ? Math.round(v / 1e6).toLocaleString('id-ID') : jt(v) + ' jt';
+  const ds = per ? T.outlet.map((o, j) => ({label: o.nama, kode: o.kode, data: T.bulan.map(m => m.realisasi[o.kode] ?? null), borderColor: TH_WARNA[j % TH_WARNA.length], backgroundColor: TH_WARNA[j % TH_WARNA.length], borderWidth: 2, pointRadius: 3, tension: .25, spanGaps: false}))
+    : [{label: 'Omzet', data: S.map(s => s.R), borderColor: '#c8691c', backgroundColor: 'rgba(200,105,28,.12)', fill: 'origin', borderWidth: 2.5, pointRadius: hp ? 3 : 4, pointBackgroundColor: '#c8691c', tension: .25, spanGaps: false},
+       ...(S.some(s => s.T != null) ? [{label: 'Target', data: S.map(s => s.T), borderColor: '#7a3e12', borderDash: [6, 4], borderWidth: 1.5, pointRadius: 2, pointBackgroundColor: '#7a3e12', fill: false, spanGaps: false}] : [])];
+  CHART_TH = new Chart($('cTh'), {type: 'line', data: {labels: BLS, datasets: ds},
+    plugins: [{id: 'thLabel', afterDatasetsDraw(c) { const g = c.ctx, a = c.chartArea; g.save(); g.textAlign = 'center';
+      S.forEach(s => { const x = c.scales.x.getPixelForValue(s.i);
+        let st = s.st === 'err' ? 'tidak terbaca' : s.st === 'load' || s.st === 'pending' ? 'memuat…' : s.R == null ? 'belum ada' : s.berjalan ? (hp ? 's/d ' : 's/d tgl ') + s.sd : '';
+        if (st) { g.font = (s.R == null ? 'italic 400 ' : '600 ') + (hp ? '9px' : '10.5px') + ' system-ui,sans-serif'; g.fillStyle = '#9e9e9e'; g.textBaseline = 'bottom';
+          if (hp && s.R == null) { g.save(); g.translate(x, a.bottom - 4); g.rotate(-Math.PI / 2); g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText(st, 0, 0); g.restore(); } else { const w = g.measureText(st).width / 2; g.fillText(st, Math.min(Math.max(x, w + 2), c.width - w - 2), a.bottom - 3); } }
+        if (per || s.R == null) return; const el = c.getDatasetMeta(0).data[s.i]; if (!el) return;
+        g.textBaseline = 'bottom'; g.font = '700 ' + (hp ? '9.5px' : '11.5px') + ' system-ui,sans-serif'; g.fillStyle = '#2b2118'; g.fillText(lbl(s.R), el.x, el.y - 7);
+        if (s.mom != null) { g.textBaseline = 'top'; g.font = '700 ' + (hp ? '8.5px' : '10.5px') + ' system-ui,sans-serif'; g.fillStyle = s.mom >= 0 ? '#1b7a2b' : '#c62828';
+          g.fillText((s.mom >= 0 ? '▲' : '▼') + (hp ? '' : (s.momRata ? '≈' : '')) + Math.abs(Math.round(s.mom * 100)) + '%', el.x, el.y + 7); } });
+      g.restore(); }}],
+    options: {maintainAspectRatio: false, layout: {padding: {top: 22, left: hp ? 0 : 6, right: hp ? 6 : 14}}, interaction: {mode: 'index', intersect: false},
+      plugins: {legend: {display: per || ds.length > 1, position: per && !hp ? 'bottom' : 'top', labels: {boxWidth: 12, font: {size: hp ? 11 : 12}}},
+        tooltip: {callbacks: {title: it => BULAN[it[0].dataIndex] + ' ' + TH_TAHUN, filter: x => x.raw != null, label: x => x.dataset.label + ': ' + rp(x.raw),
+          footer: it => { const s = S[it[0].dataIndex]; if (per) return s.R != null ? 'Total: ' + rp(s.R) : ''; return [s.p != null ? 'Capaian: ' + pc(s.p) : '', s.mom != null ? 'vs bulan lalu: ' + (s.momRata ? '≈' : '') + sgn(s.mom) + pc(s.mom) + (s.momRata ? ' (rata-rata/hari)' : '') : '', s.berjalan ? 's/d tgl ' + s.sd : '', s.kurang.length && s.R != null ? 'Belum ada: ' + s.kurang.join(', ') : '', s.tb ? 'Sumber: sheet Target Bulanan' : '', s.tb && s.pusatR !== undefined && Math.abs(s.R - (s.pusatR || 0)) >= 1000 ? 'Sheet Pusat: ' + (s.pusatR != null ? rp(s.pusatR) : '—') : ''].filter(Boolean); }}}},
+      scales: {y: {beginAtZero: true, grace: '12%', ticks: {callback: v => hp ? Math.round(v / 1e6) + (v ? ' jt' : '') : rpS(v), maxTicksLimit: hp ? 5 : 7}},
+        x: {grid: {display: false}, ticks: {font: {size: hp ? 11 : 12.5, weight: '600'}, maxRotation: 0, autoSkip: false}}}}});
+}
+
+/* ===== State & muat ===== */
+let DATA = null, DATA_SRC = null, PER = 'minggu', P = 0, CHART = null, CHART_CH = null, PERTAMA = true, INFO = [], VIEW = ['channel', 'chout', 'tahunan'].includes(QS.get('tampilan')) ? QS.get('tampilan') : 'outlet', CHART_CO = null, CO_MODE = QS.get('periode') === 'tahunan' ? 'tahun' : 'bulan', CO_MET = QS.get('metrik') === 'porsi' ? 'porsi' : 'nominal', CO_BULAN = null, CO_OUTLET = QS.get('outlet') || 'semua', CO_SEQ = 0, CHD = null, CH_SRC = null, CH_LOADING = false, CH_MODE = QS.get('periode') === 'tahunan' ? 'tahun' : 'bulan', CH_MET = QS.get('metrik') === 'realisasi' ? 'nominal' : 'persen', CH_BULAN = null;
+{ const qp = (QS.get('periode') || '').toLowerCase(); if (qp === 'bulan') PER = 'bulan';
+  const wita = new Date(Date.now() + 8 * 3600e3), cur = wita.toISOString().slice(0, 7), opts = [];
+  let [y, m] = BULAN_AWAL.split('-').map(Number); const [ye, me] = [wita.getUTCFullYear(), wita.getUTCMonth() + 2];
+  while (y < ye || (y === ye && m <= me)) { const v = y + '-' + String(m).padStart(2, '0'); opts.push(v); if (++m > 12) { m = 1; y++; } }
+  $('fBulan').innerHTML = opts.reverse().map(v => `<option value="${v}">${bulanLabel(v)}</option>`).join('');
+  const qb = (QS.get('bulan') || QS.get('sheet') || '').toLowerCase();
+  const pilih = /^\d{4}-\d{2}$/.test(qb) ? qb : /^okt/.test(qb) ? '2026-10' : /^nov/.test(qb) ? '2026-11' : cur;
+  $('fBulan').value = opts.includes(pilih) ? pilih : cur; }
+async function ambil(path) {
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const r = await fetch(N8N_URL + path + (path.includes('?') ? '&' : '?') + 't=' + Date.now(), {cache: 'no-store', signal: ctl.signal});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const txt = await r.text(), d = txt.trim() ? JSON.parse(txt) : null;
+    if (!d || d.ok === false || (path.startsWith('/monitoring-channel') ? !Array.isArray(d.bulan) : !Array.isArray(d.outlet))) throw new Error(d && d.message ? d.message : 'format respons tidak dikenal');
+    return d;
+  } catch (e) { throw new Error(e.name === 'AbortError' ? 'waktu habis' : e.message); } finally { clearTimeout(to); }
+}
+const kosong = d => !(d.outlet || []).some(o => +o.target_bulanan > 0 || (o.realisasi_per_minggu || []).some(v => +v > 0));
+async function muat() {
+  const b = $('bMain'); $('chartCard').classList.add('loading');
+  const bl = $('fBulan').value, cad = CADANGAN[bl];
+  let d = null, gagal = '', SRC = null;
+  if (!DEMO_Q) {
+    let dp = null;
+    try { dp = await ambil(PUSAT + '?bulan=' + bl); } catch (e) { gagal = 'Sheet Pusat: ' + e.message; }
+    if (dp && !(cad && kosong(dp))) { d = dp; SRC = {jenis: 'pusat', label: 'Sheet Pusat'}; }
+    else {
+      if (dp) gagal = 'data Sheet Pusat ' + bulanLabel(bl) + ' masih kosong';
+      if (cad) { try { d = await ambil(cad.path); SRC = {jenis: 'cadangan', label: cad.label, alasan: gagal}; } catch (e2) { gagal += ' · ' + cad.label + ': ' + e2.message; } }
+      if (!d && dp) { d = dp; SRC = {jenis: 'pusat', label: 'Sheet Pusat'}; }
+    }
+  }
+  DATA_SRC = d ? SRC : null;
+  const demo = !d;
+  DATA = demo ? JSON.parse(JSON.stringify(DEMO)) : d;
+  $('ilus').classList.toggle('on', demo);
+  // Pesan hanya bila perlu: data gagal dibaca (tampil data contoh). Cadangan/demo cukup lencana kecil di header.
+  if (demo && !DEMO_Q) { b.className = 'banner err'; b.title = gagal; b.innerHTML = '⚠️ Data ' + esc(bulanLabel(bl)) + ' tidak terbaca, menampilkan <b>Data contoh</b> (bukan data aktual).'; }
+  else { b.className = 'banner'; b.textContent = ''; b.title = ''; }
+  const bc = $('bCh');
+  if (demo) { bc.className = 'src on demo'; bc.textContent = 'Data contoh'; bc.title = DEMO_Q ? 'Mode demo (?demo=1): data ilustrasi, bukan data aktual.' : 'Sumber gagal dibaca: ' + gagal; }
+  else if (DATA_SRC.jenis === 'cadangan') { bc.className = 'src on'; bc.textContent = 'Sumber: ' + DATA_SRC.label + ' (cadangan)'; bc.title = 'Memakai sumber cadangan karena ' + DATA_SRC.alasan; }
+  else { bc.className = 'src'; bc.textContent = ''; bc.title = 'Sumber: Sheet Pusat'; }
+  INFO = [];
+  if (!demo) { if ((d.gagal || []).length) INFO.push('Bagian sheet tidak terbaca: ' + d.gagal.join(', ')); (d.catatan || []).forEach(c => INFO.push(String(c))); }
+  // minggu default = minggu berjalan / terakhir terisi; ?minggu= hanya saat pertama dibuka
+  const H0 = hitung(DATA, 'kum', 0), qm = PERTAMA ? (QS.get('minggu') || '').toLowerCase() : ''; PERTAMA = false;
+  P = qm === 'kum' ? 'kum' : (+qm >= 1 && +qm <= 4 ? +qm - 1 : H0.wAkhir);
+  $('upd').textContent = 'Diperbarui ' + new Date().toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'});
+  $('chartCard').classList.remove('loading');
+  render();
+}
+
+/* ===== Render ===== */
+function render() {
+  document.querySelectorAll('#fView button').forEach(x => x.classList.toggle('on', x.dataset.v === VIEW));
+  const ch = VIEW === 'channel', co = VIEW === 'chout', th = VIEW === 'tahunan';
+  ['fMode', 'fBulan', 'chartCard', 'rank'].forEach(id => $(id).classList.toggle('hide', ch || co || th)); ['thCard', 'fThTahun', 'fThOutlet'].forEach(id => $(id).classList.toggle('hide', !th)); ['chCard', 'fChMode', 'fChBulan'].forEach(id => $(id).classList.toggle('hide', !ch)); if (!ch) $('fChMet').classList.add('hide');
+  ['coCard', 'fCoMode', 'fCoMet'].forEach(id => $(id).classList.toggle('hide', !co)); if (!co) { $('fCoBulan').classList.add('hide'); $('fCoOutlet').classList.add('hide'); }
+  document.body.classList.toggle('chv', ch); document.body.classList.toggle('cov', co); document.body.classList.toggle('thv', th); document.body.classList.toggle('chdemo', (ch && !!CH_SRC && CH_SRC.jenis === 'demo') || ((co || th) && DEMO_Q));
+  if (!co && CHART_CO) { CHART_CO.destroy(); CHART_CO = null; }
+  if (!th && CHART_TH) { CHART_TH.destroy(); CHART_TH = null; }
+  if (th) { $('rowMinggu').classList.add('hide'); if (CHART) { CHART.destroy(); CHART = null; } if (CHART_CH) { CHART_CH.destroy(); CHART_CH = null; } renderTh(); return; }
+  if (co) { $('rowMinggu').classList.add('hide'); if (CHART) { CHART.destroy(); CHART = null; } if (CHART_CH) { CHART_CH.destroy(); CHART_CH = null; } renderCo(); return; }
+  if (ch) { $('rowMinggu').classList.add('hide'); if (CHART) { CHART.destroy(); CHART = null; } renderChannel(); return; }
+  if (CHART_CH) { CHART_CH.destroy(); CHART_CH = null; }
+  if (!DATA) return;
+  const per = PER === 'bulan' ? 'bulan' : P === 'kum' ? 'kum' : 'minggu', H = hitung(DATA, per, P === 'kum' ? 0 : P);
+  const bl = DATA.bulan || $('fBulan').value, mm = /^\d{4}-(\d{2})$/.exec(bl), bs = mm ? BLS[+mm[1] - 1] : '';
+  document.querySelectorAll('#fMode button').forEach(x => x.classList.toggle('on', x.dataset.v === PER));
+  $('rowMinggu').classList.toggle('hide', PER !== 'minggu');
+  $('fMinggu').innerHTML = [0, 1, 2, 3].map(j => `<button data-v="${j}" class="${P === j ? 'on' : ''}">Minggu ${j + 1}<small>${H.W[j][0]}–${H.W[j][1]} ${bs}</small></button>`).join('')
+    + `<button data-v="kum" class="${P === 'kum' ? 'on' : ''}">Kumulatif<small>s/d hari ini</small></button>`;
+  document.querySelectorAll('#fMinggu button').forEach(b => b.onclick = () => { P = b.dataset.v === 'kum' ? 'kum' : +b.dataset.v; render(); });
+  const lblBl = bulanLabel(bl);
+  let judul, kolT, kolS;
+  if (per === 'minggu') { judul = 'Minggu ' + (H.p + 1) + ' · ' + H.W[H.p][0] + '–' + H.W[H.p][1] + ' ' + bs; kolT = 'Target Minggu ' + (H.p + 1); kolS = 'Sisa Target Minggu'; }
+  else if (per === 'kum') { judul = 'Kumulatif ' + lblBl + ' · tgl 1–' + H.sdTgl; kolT = 'Target s/d Tgl ' + H.sdTgl; kolS = 'Sisa Target Bulan'; }
+  else { judul = lblBl; kolT = 'Target Bulanan'; kolS = 'Sisa Target Bulan'; }
+  $('judul').textContent = judul;
+  // keterangan → hanya di tooltip (ⓘ), tidak tampil di halaman
+  let tb = '';
+  if (H.status === 'berjalan' && per === 'minggu') tb = `Minggu ${H.p + 1} masih berjalan, data s/d tgl ${H.mb.sampai_tgl} (${H.mb.hari} dari ${H.mb.hari_total} hari). Target diprorata ${H.mb.hari}/${H.mb.hari_total} hari.`;
+  else if (H.status === 'berjalan' && per === 'kum') tb = `Bulan masih berjalan, data s/d tgl ${H.mb.sampai_tgl}. Target minggu ${H.wB + 1} diprorata ${H.mb.hari}/${H.mb.hari_total} hari.`;
+  else if (H.status === 'berjalan') tb = `Bulan masih berjalan, data s/d tgl ${H.sdTgl} dari ${H.dim} hari. Selisih dihitung terhadap target bulanan penuh${H.tot.tSdHari != null ? '; target s/d tgl ' + H.sdTgl + ' = ' + rpS(H.tot.tSdHari) + (H.tot.pSdHari != null ? ' (' + pc(H.tot.pSdHari) + ' tercapai)' : '') : ''}.`;
+  else if (H.status === 'belum') tb = per === 'minggu' && H.adaData ? `Minggu ${H.p + 1} belum berjalan (data baru s/d tgl ${DATA.tgl_terakhir || '-'}). Yang tampil baru targetnya.` : 'Belum ada omzet untuk ' + lblBl + '. Yang tampil baru targetnya.';
+  const bawaan = DATA.bobot_sumber === 'bawaan';
+  $('bjl').textContent = tb; $('bjl').classList.toggle('hide', !tb);
+  $('foot').textContent = `Angka di atas batang = selisih (realisasi − target) dan % capaian. Bobot minggu ${lblBl}: ${H.bobot.map(pc).join(' / ')}${bawaan ? ' (bawaan, bobot bulan ini belum diisi di tab target)' : ''}. Realisasi = Tunai + QRIS + Ojol (tanpa ongkir).`;
+  $('info').textContent = INFO.join(' · '); $('info').classList.toggle('hide', !INFO.length);
+  $('tip').classList.toggle('w', bawaan || INFO.length > 0);
+  // tabel ringkas (dilipat)
+  const sel = v => v == null ? '<span class="muted">—</span>' : `<span class="${v < 0 ? 'neg' : 'pos'}">${sgn(v)}${rp(v)}</span>`;
+  const pcT = v => v == null ? '<span class="tag st-n">belum ada</span>' : `<span class="tag ${stCls(v)}">${pc(v)}</span>`;
+  const sdh = r => per === 'bulan' && r.tSdHari != null ? `<small>s/d tgl ${H.sdTgl}: ${rp(r.tSdHari)}${r.pSdHari != null ? ' · ' + pc(r.pSdHari) : ''}</small>` : '';
+  $('tbl').tHead.innerHTML = `<tr><th class="sl">Outlet</th><th class="r">${esc(kolT)}</th><th class="r">Realisasi Omzet</th><th class="r">Selisih</th><th class="r">% Capaian</th><th class="r">${esc(kolS)}</th></tr>`;
+  $('tbl').tBodies[0].innerHTML = H.rows.map(r => `<tr><td class="sl"><b>${esc(r.nama)}</b></td><td class="r">${r.tgt == null ? '<span class="muted">belum ada target</span>' : rp(r.tgt)}${sdh(r)}</td>
+    <td class="r">${r.R == null ? '<span class="muted">belum ada</span>' : rp(r.R)}</td><td class="r">${sel(r.sel)}</td><td class="r">${pcT(r.p)}</td><td class="r">${r.sisa == null ? '—' : rp(r.sisa)}</td></tr>`).join('');
+  const t = H.tot;
+  $('tbl').tFoot.innerHTML = `<tr><td class="sl">Total Brand${t.nIsi < t.n ? `<small>${t.nIsi} dari ${t.n} outlet ada data</small>` : ''}</td><td class="r">${t.tgt == null ? '—' : rp(t.tgt)}${per === 'bulan' && t.tSdHari != null ? `<small>s/d tgl ${H.sdTgl}: ${rp(t.tSdHari)}${t.pSdHari != null ? ' · ' + pc(t.pSdHari) : ''}</small>` : ''}</td>
+    <td class="r">${t.R == null ? '—' : rp(t.R)}</td><td class="r">${sel(t.sel)}</td><td class="r">${pcT(t.p)}</td><td class="r">${t.sisa == null ? '—' : rp(t.sisa)}</td></tr>`;
+  renderChart(H, kolT);
+  renderRank(H, bs);
+}
+/* Top Ranking: realisasi tertinggi (Top 5) · minggu terpilih (Per Bulan / Kumulatif → minggu terakhir terisi) & akumulasi bulan */
+const TOPN = 5, MEDALI = ['🥇', '🥈', '🥉'];
+function renderRank(H, bs) {
+  const w = PER === 'minggu' && P !== 'kum' ? P : H.wAkhir;
+  const isi = (id, rows) => { const t = rows.filter(r => r.R != null && r.R > 0).sort((a, b) => b.R - a.R).slice(0, TOPN);
+    document.querySelector('#' + id + ' ol').innerHTML = t.length ? t.map((r, i) => `<li class="j${i + 1}"><span class="md">${MEDALI[i] || `<span class="no">${i + 1}</span>`}</span><span class="nm">${esc(r.nama)}</span><span class="nv">${rpS(r.R)}</span></li>`).join('') : '<li class="kos">belum ada data</li>'; };
+  $('rkMj').textContent = 'Top Ranking Minggu ' + (w + 1); isi('rkM', hitung(DATA, 'minggu', w).rows);
+  $('rkBj').textContent = 'Top Ranking Bulan ' + (BULAN[(+((DATA.bulan || $('fBulan').value).split('-')[1]) || 1) - 1] || ''); isi('rkB', hitung(DATA, 'bulan', 0).rows);
+}
+function renderChart(H, kolT) {
+  if (CHART) { CHART.destroy(); CHART = null; }
+  const box = document.querySelector('.cw'), rows = H.rows, hp = window.innerWidth < 640;
+  box.style.height = hp ? Math.max(380, rows.length * 66 + 70) + 'px' : '';
+  if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="cOut"></canvas>';
+  if (!window.Chart) { box.innerHTML = '<div class="nochart">Grafik tidak bisa dimuat. Buka tabel di bawah.</div>'; bukaTabel(true); return; }
+  Chart.defaults.animation = false; Chart.defaults.font.family = 'system-ui,Segoe UI,Roboto,sans-serif';
+  const colR = rows.map(r => r.p == null ? '#9e9e9e' : r.p >= 1 ? '#2e7d32' : '#c62828');
+  const tSd = H.periode === 'bulan' && H.status === 'berjalan';
+  CHART = new Chart($('cOut'), {type: 'bar', data: {labels: rows.map(r => r.nama), datasets: [
+      {label: kolT, data: rows.map(r => r.tgt), backgroundColor: '#e8d5bd', borderColor: '#c8a882', borderWidth: 1, borderRadius: 4},
+      {label: 'Realisasi', data: rows.map(r => r.R), backgroundColor: colR, borderRadius: 4}]},
+    plugins: [{id: 'labelSel', afterDatasetsDraw(c) { const g = c.ctx, m0 = c.getDatasetMeta(0), m1 = c.getDatasetMeta(1); g.save();
+      const fs = c.width < 500 ? 11 : 12.5;
+      m1.data.forEach((el, i) => { const r = rows[i]; if (r.sel == null) return; const col = r.sel < 0 ? '#b71c1c' : '#1b5e20', txt = sgn(r.sel) + rpS(r.sel).replace('Rp', ''), pt = r.p != null ? pc(r.p) : '';
+        if (hp) { g.textAlign = 'left'; g.textBaseline = 'middle'; const x = Math.max(el.x, m0.data[i].x) + 5, y = (el.y + m0.data[i].y) / 2;
+          g.font = '700 ' + fs + 'px system-ui,sans-serif'; g.fillStyle = col; g.fillText(txt, x, y - 7); g.font = '600 ' + (fs - 1) + 'px system-ui,sans-serif'; g.fillStyle = '#6b5a4a'; g.fillText(pt, x, y + 7); }
+        else { g.textAlign = 'center'; g.textBaseline = 'bottom'; const x = (el.x + m0.data[i].x) / 2, y = Math.min(el.y, m0.data[i].y) - 4;
+          g.font = '600 ' + (fs - 1) + 'px system-ui,sans-serif'; g.fillStyle = '#6b5a4a'; g.fillText(pt, x, y);
+          g.font = '700 ' + fs + 'px system-ui,sans-serif'; g.fillStyle = col; g.fillText(txt, x, y - fs - 3); } }); g.restore(); }}],
+    options: {indexAxis: hp ? 'y' : 'x', maintainAspectRatio: false, layout: {padding: hp ? {right: 72} : {top: 34}},
+      datasets: {bar: {categoryPercentage: .78, barPercentage: .9}},
+      plugins: {legend: {position: hp ? 'top' : 'bottom', labels: {boxWidth: 12, font: {size: 12}, generateLabels: ch => Chart.defaults.plugins.legend.labels.generateLabels(ch).map(l => l.datasetIndex === 1 ? Object.assign(l, {fillStyle: '#2e7d32', strokeStyle: '#2e7d32', text: 'Realisasi (hijau ≥ target · merah < target)'}) : l)}},
+        tooltip: {mode: 'index', callbacks: {label: c => c.dataset.label + ': ' + (c.raw == null ? 'belum ada' : rp(c.raw)),
+          afterBody: it => { const r = rows[it[0].dataIndex], o = []; if (r.sel != null) o.push('Selisih: ' + sgn(r.sel) + rp(r.sel) + ' · ' + pc(r.p));
+            if (tSd && r.tSdHari != null) o.push('Target s/d tgl ' + H.sdTgl + ': ' + rp(r.tSdHari) + (r.pSdHari != null ? ' · ' + pc(r.pSdHari) : ''));
+            if (H.status === 'berjalan' && H.periode !== 'bulan') o.push('Target minggu berjalan diprorata ' + H.mb.hari + '/' + H.mb.hari_total + ' hari');
+            return o; }}}},
+      scales: {[hp ? 'x' : 'y']: {beginAtZero: true, grace: '12%', ticks: {callback: v => rpS(v), maxTicksLimit: hp ? 4 : 8}}, [hp ? 'y' : 'x']: {grid: {display: false}, ticks: {font: {size: 12, weight: '600'}}}}}});
+}
+async function muatChannel(paksa) {
+  if (CH_LOADING || (CHD && !paksa)) return; CH_LOADING = true; $('chCard').classList.add('loading');
+  const th = (CH_BULAN || $('fBulan').value || '').slice(0, 4) || String(new Date().getFullYear());
+  let d = null, err = '';
+  if (DEMO_Q) { d = DEMO_CH; CH_SRC = {jenis: 'demo', label: 'Data contoh'}; }
+  else {
+    try { const r = await ambil('/monitoring-channel-controldash?tahun=' + th); if (r && r.ok && +r.versi >= 2 && Array.isArray(r.bulan) && r.bulan.some(b => b.ok)) { d = r; CH_SRC = {jenis: 'live', label: 'CONTROL DASHBOARD (langsung)'}; } else err = r && r.ok && !(+r.versi >= 2) ? 'flow channel versi lama, impor ulang versi 2' : (r && (r.message || (r.gagal || []).join('; '))) || 'respons kosong'; }
+    catch (e) { err = e.message; }
+    if (!d) { d = SNAP_CH; CH_SRC = {jenis: 'snapshot', label: 'Salinan CONTROL DASHBOARD 27 Okt 2026', alasan: err}; }
+  }
+  CHD = d; CH_LOADING = false; $('chCard').classList.remove('loading');
+  const bl = CHD.bulan.filter(b => b.ok).map(b => b.bulan).sort(), fb = $('fChBulan');
+  fb.innerHTML = bl.map(b => `<option value="${b}">${esc(bulanLabel(b))}</option>`).join('');
+  const ingin = CH_BULAN || QS.get('bulan') || $('fBulan').value;
+  const lastR = blnOk(CHD).filter(adaReal).map(b => b.bulan).pop();
+  CH_BULAN = bl.includes(ingin) ? ingin : lastR || bl[bl.length - 1] || null; if (CH_BULAN) fb.value = CH_BULAN;
+  if (VIEW === 'channel') render();
+}
+function renderChannel() {
+  document.querySelectorAll('#fChMode button').forEach(x => x.classList.toggle('on', x.dataset.v === CH_MODE));
+  document.querySelectorAll('#fChMet button').forEach(x => x.classList.toggle('on', x.dataset.v === CH_MET));
+  $('fChBulan').disabled = CH_MODE === 'tahun'; $('fChBulan').classList.toggle('hide', CH_MODE === 'tahun'); $('fChMet').classList.toggle('hide', CH_MODE !== 'tahun');
+  if (!CHD) { $('chJudul').textContent = 'Per Channel · memuat…'; muatChannel(); return; }
+  const th = (CH_BULAN || '').slice(0, 4) || CHD.tahun;
+  $('chJudul').textContent = 'Per Channel · ' + (CH_MODE === 'tahun' ? 'Tahunan ' + th : bulanLabel(CH_BULAN));
+  const src = $('chSrc'); src.classList.toggle('hide', CH_SRC.jenis === 'live');
+  src.textContent = CH_SRC.jenis === 'demo' ? 'Data contoh' : 'salinan 27 Okt'; src.title = CH_SRC.jenis === 'demo' ? 'Mode demo (?demo=1): data ilustrasi, bukan data aktual.' : 'Flow channel belum aktif/terbaca (' + (CH_SRC.alasan || '-') + '), menampilkan salinan CONTROL DASHBOARD 27 Okt 2026 04.30 WITA.';
+  if (CH_MODE === 'tahun') return renderChTahun();
+  const C = hitungChannel(CHD, CH_BULAN), rows = C.rows;
+  let tb = '';
+  if (!C.adaR) tb = 'Realisasi ' + bulanLabel(CH_BULAN) + ' belum diisi di CONTROL DASHBOARD. Yang tampil baru targetnya.';
+  $('chBjl').textContent = tb; $('chBjl').classList.toggle('hide', !tb);
+  $('chFoot').textContent = 'Sumber: tab CONTROL DASHBOARD file Target Control tiap bulan (blok CHANNEL MARKETING: target per-channel, realisasi bulan ini). Hijau = realisasi ≥ target, merah = di bawah target.' + (C.crm ? ' CRM Rp0 di sheet, tidak ditampilkan.' : '');
+  const inf = C.gagal.length ? 'Tidak terbaca: ' + C.gagal.map(bulanLabel).join(', ') + ' (cek akses service account).' : '';
+  $('chInfo').textContent = inf; $('chInfo').classList.toggle('hide', !inf); $('chTip').classList.toggle('w', !!inf);
+  const sel = v => `<span class="${v < 0 ? 'neg' : 'pos'}">${sgn(v)}${rp(v)}</span>`, pcT = v => v == null ? '<span class="tag st-n">—</span>' : `<span class="tag ${v >= 1 ? 'st-g' : 'st-r'}">${pc(v)}</span>`;
+  $('tbl').tHead.innerHTML = '<tr><th class="sl">Channel</th><th class="r">Target</th><th class="r">Realisasi</th><th class="r">Selisih</th><th class="r">Achieve %</th></tr>';
+  $('tbl').tBodies[0].innerHTML = rows.map(r => `<tr><td class="sl"><b>${esc(r.nama)}</b></td><td class="r">${rp(r.tgt)}</td><td class="r">${rp(r.R)}</td><td class="r">${sel(r.sel)}</td><td class="r">${pcT(r.p)}</td></tr>`).join('');
+  const t = C.tot; $('tbl').tFoot.innerHTML = `<tr><td class="sl">Total Channel</td><td class="r">${rp(t.tgt)}</td><td class="r">${rp(t.R)}</td><td class="r">${sel(t.sel)}</td><td class="r">${pcT(t.p)}</td></tr>`;
+  if (CHART_CH) { CHART_CH.destroy(); CHART_CH = null; }
+  const box = $('chBox'), hp = window.innerWidth < 640;
+  box.style.height = hp ? Math.max(360, rows.length * 70 + 70) + 'px' : '';
+  if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="cCh"></canvas>';
+  if (!window.Chart) { box.innerHTML = '<div class="nochart">Grafik tidak bisa dimuat. Buka tabel di bawah.</div>'; bukaTabel(true); return; }
+  Chart.defaults.animation = false; Chart.defaults.font.family = 'system-ui,Segoe UI,Roboto,sans-serif';
+  const adaR = C.adaR, colR = rows.map(r => r.p != null && r.p >= 1 ? '#2e7d32' : '#c62828');
+  CHART_CH = new Chart($('cCh'), {type: 'bar', data: {labels: rows.map(r => r.nama), datasets: [
+      {label: 'Target', data: rows.map(r => r.tgt), backgroundColor: '#e8d5bd', borderColor: '#c8a882', borderWidth: 1, borderRadius: 4},
+      {label: 'Realisasi', data: rows.map(r => adaR ? r.R : null), backgroundColor: colR, borderRadius: 4}]},
+    plugins: [{id: 'labelCh', afterDatasetsDraw(c) { if (!adaR) return; const g = c.ctx, m0 = c.getDatasetMeta(0), m1 = c.getDatasetMeta(1); g.save();
+      const fs = c.width < 500 ? 11 : 12.5;
+      m1.data.forEach((el, i) => { const r = rows[i], e0 = m0.data[i]; if (r.p == null) return;
+        const a = sgn(r.sel) + rpS(r.sel).replace('Rp', ''), b = pc(r.p), col = r.sel < 0 ? '#b71c1c' : '#1b5e20';
+        if (hp) { g.textAlign = 'left'; g.textBaseline = 'middle'; const x = Math.max(el.x, e0.x) + 5, y = (el.y + e0.y) / 2;
+          g.font = '700 ' + fs + 'px system-ui,sans-serif'; g.fillStyle = col; g.fillText(a, x, y - 7);
+          g.font = '600 ' + (fs - 1) + 'px system-ui,sans-serif'; g.fillStyle = '#6b5a4a'; g.fillText(b, x, y + 7); }
+        else { g.textAlign = 'center'; g.textBaseline = 'bottom'; const x = (el.x + e0.x) / 2, y = Math.min(el.y, e0.y) - 4;
+          g.font = '600 ' + (fs - 1) + 'px system-ui,sans-serif'; g.fillStyle = '#6b5a4a'; g.fillText(b, x, y);
+          g.font = '700 ' + fs + 'px system-ui,sans-serif'; g.fillStyle = col; g.fillText(a, x, y - fs - 3); } }); g.restore(); }}],
+    options: {indexAxis: hp ? 'y' : 'x', maintainAspectRatio: false, layout: {padding: hp ? {right: 74} : {top: 34}},
+      datasets: {bar: {categoryPercentage: .78, barPercentage: .9}},
+      plugins: {legend: {position: hp ? 'top' : 'bottom', labels: {boxWidth: 12, font: {size: 12}, generateLabels: ch => Chart.defaults.plugins.legend.labels.generateLabels(ch).map(l => l.datasetIndex === 1 ? Object.assign(l, {fillStyle: '#2e7d32', strokeStyle: '#2e7d32', text: 'Realisasi (hijau ≥ target · merah < target)'}) : l)}},
+        tooltip: {mode: 'index', callbacks: {label: c => c.dataset.label + ': ' + (c.raw == null ? 'belum diisi' : rp(c.raw)),
+          afterBody: it => { const r = rows[it[0].dataIndex]; return adaR && r.p != null ? ['Selisih: ' + sgn(r.sel) + rp(r.sel) + ' · ' + pc(r.p)] : []; }}}},
+      scales: {[hp ? 'x' : 'y']: {beginAtZero: true, grace: '12%', ticks: {callback: v => rpS(v), maxTicksLimit: hp ? 4 : 8}}, [hp ? 'y' : 'x']: {grid: {display: false}, ticks: {font: {size: 12, weight: '600'}}}}}});
+}
+function renderChTahun() {
+  const T = hitungTahunan(CHD, CH_MET), pr = CH_MET === 'persen', hp = window.innerWidth < 640, bs = b => bulanLabel(b).split(' ')[0].slice(0, 3);
+  const lw = T.lewat.length ? T.lewat.map(bs).join(', ') + ' belum ada realisasi.' : '';
+  $('chBjl').textContent = lw; $('chBjl').classList.toggle('hide', !lw);
+  $('chFoot').textContent = 'Sumber: tab CONTROL DASHBOARD tiap bulan. 🏆 = channel dengan ' + (pr ? '% capaian' : 'realisasi') + ' tertinggi di bulan itu.';
+  const inf = T.gagal.length ? 'Tidak terbaca: ' + T.gagal.map(bulanLabel).join(', ') + ' (cek akses service account).' : '';
+  $('chInfo').textContent = inf; $('chInfo').classList.toggle('hide', !inf); $('chTip').classList.toggle('w', !!inf);
+  $('tbl').tHead.innerHTML = '<tr><th class="sl">Bulan</th>' + T.ch.map(k => `<th class="r">${esc(chNama(k))}</th>`).join('') + '<th class="sl">🏆</th></tr>';
+  $('tbl').tBodies[0].innerHTML = T.bulan.map((b, i) => '<tr><td class="sl"><b>' + esc(bulanLabel(b)) + '</b></td>' + T.ch.map(k => { const v = T.sel[i][k]; if (!v) return '<td class="r">—</td>';
+    const big = pr ? (v.p == null ? '—' : pc(v.p)) : rpS(v.R), small = pr ? rpS(v.R) : (v.p == null ? '' : pc(v.p));
+    return `<td class="r${T.juara[i] === k ? ' juara' : ''}">${T.juara[i] === k ? '🏆 ' : ''}<b>${big}</b><br><small class="mut">${small}</small></td>`; }).join('') + `<td class="sl">${T.juara[i] ? esc(chNama(T.juara[i])) : '—'}</td></tr>`).join('');
+  $('tbl').tFoot.innerHTML = '';
+  if (CHART_CH) { CHART_CH.destroy(); CHART_CH = null; }
+  const box = $('chBox');
+  box.style.height = hp ? Math.max(380, T.bulan.length * (T.ch.length * 15 + 34) + 90) + 'px' : '';
+  if (!box.querySelector('canvas')) box.innerHTML = '<canvas id="cCh"></canvas>';
+  if (!window.Chart) { box.innerHTML = '<div class="nochart">Grafik tidak bisa dimuat. Buka tabel di bawah.</div>'; bukaTabel(true); return; }
+  if (!T.bulan.length) { box.innerHTML = '<div class="nochart">Belum ada bulan dengan realisasi.</div><canvas id="cCh" class="hide"></canvas>'; return; }
+  const ds = T.ch.map(k => ({label: chNama(k), kode: k, data: T.sel.map(m => { const v = T.nilai(m[k]); return v == null ? null : pr ? +(v * 100).toFixed(1) : v; }), backgroundColor: CH_WARNA[k] || '#999', borderRadius: 3}));
+  CHART_CH = new Chart($('cCh'), {type: 'bar', data: {labels: T.bulan.map(bs), datasets: ds},
+    plugins: [{id: 'juaraCh', afterDatasetsDraw(c) { const g = c.ctx; g.save();
+      if (pr) { const sc = c.scales[hp ? 'x' : 'y'], v = sc.getPixelForValue(100), a = c.chartArea; g.strokeStyle = '#6b5a4a'; g.setLineDash([5, 4]); g.lineWidth = 1.2; g.beginPath();
+        if (hp) { g.moveTo(v, a.top); g.lineTo(v, a.bottom); } else { g.moveTo(a.left, v); g.lineTo(a.right, v); } g.stroke(); g.setLineDash([]);
+        g.fillStyle = '#6b5a4a'; g.font = '600 11px system-ui,sans-serif'; g.textAlign = 'right'; g.textBaseline = 'bottom'; g.fillText('target 100%', hp ? v - 4 : a.right, hp ? a.bottom - 3 : v - 3); }
+      T.juara.forEach((k, i) => { if (!k) return; const di = T.ch.indexOf(k), el = c.getDatasetMeta(di).data[i]; if (!el) return;
+        const val = T.nilai(T.sel[i][k]), t = pr ? pc(val) : rpS(val).replace('Rp', '');
+        g.font = (hp ? 13 : 15) + 'px system-ui,sans-serif'; g.fillStyle = '#2b2118';
+        if (hp) { g.textAlign = 'left'; g.textBaseline = 'middle'; g.fillText('🏆 ' + t, el.x + 4, el.y); }
+        else { g.textAlign = 'center'; g.textBaseline = 'bottom'; g.fillText('🏆', el.x, el.y - 15); g.font = '700 11px system-ui,sans-serif'; g.fillText(t, el.x, el.y - 2); } });
+      g.restore(); }}],
+    options: {indexAxis: hp ? 'y' : 'x', maintainAspectRatio: false, layout: {padding: hp ? {right: 70, top: 6} : {top: 36}},
+      datasets: {bar: {categoryPercentage: .82, barPercentage: .92}},
+      plugins: {legend: {position: hp ? 'top' : 'bottom', labels: {boxWidth: 12, font: {size: 12}}},
+        tooltip: {callbacks: {label: x => { const v = T.sel[x.dataIndex][x.dataset.kode]; return v ? x.dataset.label + ': ' + rp(v.R) + ' · ' + (v.p == null ? '—' : pc(v.p)) + ' dari target ' + rpS(v.tgt) : x.dataset.label + ': —'; }}}},
+      scales: {[hp ? 'x' : 'y']: {beginAtZero: true, grace: '10%', ticks: {callback: v => pr ? v + '%' : rpS(v), maxTicksLimit: hp ? 5 : 8}},
+        [hp ? 'y' : 'x']: {grid: {display: false}, ticks: {font: {size: 13, weight: '700'}}}}}});
+}
+async function renderCo() {
+  const seq = ++CO_SEQ, th = CO_MODE === 'tahun', pr = CO_MET === 'porsi', hp = window.innerWidth < 640, bs = b => bulanLabel(b).split(' ')[0].slice(0, 3);
+  document.querySelectorAll('#fCoMode button').forEach(x => x.classList.toggle('on', x.dataset.v === CO_MODE));
+  document.querySelectorAll('#fCoMet button').forEach(x => x.classList.toggle('on', x.dataset.v === CO_MET));
+  const bl = coBulanList(), fb = $('fCoBulan');
+  if (fb.options.length !== bl.length) fb.innerHTML = bl.map(b => `<option value="${b}">${esc(bulanLabel(b))}</option>`).join('');
+  if (!CO_BULAN) { const q = QS.get('bulan'), cur = $('fBulan').value; CO_BULAN = bl.includes(q) ? q : bl.includes(cur) ? cur : bl[bl.length - 1]; }
+  fb.value = CO_BULAN; fb.classList.toggle('hide', th); $('fCoOutlet').classList.toggle('hide', !th);
+  $('coJudul').textContent = 'Channel per Outlet · ' + (th ? 'Tahunan 2026' : bulanLabel(CO_BULAN));
+  $('coCard').classList.add('loading');
+  const res = await Promise.all((th ? bl : [CO_BULAN]).map(b => ambilCo(b).then(r => ({b, ...r}))));
+  if (seq !== CO_SEQ || VIEW !== 'chout') return;
+  $('coCard').classList.remove('loading');
+  const gagal = res.filter(r => r.err), src = $('coSrc');
+  src.classList.toggle('hide', !DEMO_Q); src.textContent = 'Data contoh'; src.title = 'Mode demo (?demo=1): data ilustrasi, bukan data aktual.';
+  const ol = []; res.forEach(r => coRows(r.d).forEach(o => { if (!ol.some(x => x.kode === o.kode)) ol.push(o); }));
+  const fo = $('fCoOutlet'), ho = '<option value="semua">Semua outlet</option>' + ol.map(o => `<option value="${esc(o.kode)}">${esc(o.nama)}</option>`).join('');
+  if (fo.dataset.h !== ho) { fo.innerHTML = ho; fo.dataset.h = ho; } if (CO_OUTLET !== 'semua' && ol.length && !ol.some(o => o.kode === CO_OUTLET)) CO_OUTLET = 'semua'; fo.value = CO_OUTLET;
+  if (th && CO_OUTLET !== 'semua' && fo.selectedOptions[0]) $('coJudul').textContent += ' · ' + fo.selectedOptions[0].textContent;
+  let rows;
+  if (th) rows = res.filter(r => !r.err).map(r => { const g = coGabung(coRows(r.d).filter(o => CO_OUTLET === 'semua' || o.kode === CO_OUTLET), r.b, bs(r.b)); g.bulan = r.b; return g; });
+  else rows = res[0].err ? [] : coRows(res[0].d).sort((a, b) => b.tot - a.tot);
+  const isi = rows.filter(r => r.ada), plot = th ? isi : rows;
+  const chs = CO_CH.filter(c => c[0] !== 'onk' || rows.some(r => r.v.onk > 0));
+  const note = th ? rows.filter(r => !r.ada).map(r => r.nama).join(', ') + (rows.some(r => !r.ada) ? ': belum ada data' : '') : (!res[0].err && !isi.length ? 'Belum ada data channel ' + bulanLabel(CO_BULAN) : '');
+  $('coNote').textContent = note; $('coNote').classList.toggle('hide', !note);
+  $('coBjl').textContent = 'Realisasi omzet per channel, tanpa target. ' + (th ? 'Batang = bulan; 🏆 = channel terbesar bulan itu.' : 'Batang = outlet.') + ' "data x%" = porsi omzet kasir yang sudah terpecah per channel.';
+  $('coFoot').textContent = 'Sumber: Penutupan Kasir tiap outlet (ChannelHarian: Offline, Ojol, WhatsApp) & OnlineHarian admin (Organik, Ads, Live) lewat Sheet Pusat. Online (belum dipisah) = WhatsApp kasir di hari admin belum isi.';
+  const inf = gagal.length ? 'Tidak terbaca: ' + gagal.map(r => bulanLabel(r.b)).join(', ') : ''; $('coInfo').textContent = inf; $('coInfo').classList.toggle('hide', !inf); $('coTip').classList.toggle('w', !!inf);
+  const dt = r => !r.ada ? '<span class="dtag">belum ada data</span>' : r.data < .995 ? `<span class="dtag">data ${Math.round(r.data * 100)}%</span>` : '';
+  const juara = r => r.ada ? CO_CH.filter(c => c[0] !== 'onk').reduce((a, c) => r.v[c[0]] > (a ? r.v[a[0]] : 0) ? c : a, null) : null;
+  $('tbl').tHead.innerHTML = `<tr><th class="sl">${th ? 'Bulan' : 'Outlet'}</th>` + chs.map(c => `<th class="r">${esc(c[1])}</th>`).join('') + '<th class="r">Total</th><th class="sl"></th></tr>';
+  $('tbl').tBodies[0].innerHTML = rows.map(r => { const j = th ? juara(r) : null; return `<tr><td class="sl"><b>${esc(th ? bulanLabel(r.bulan) : r.nama)}</b></td>` + chs.map(c => r.ada ? `<td class="r${j === c ? ' juara' : ''}">${j === c ? '🏆 ' : ''}${rp(r.v[c[0]])}<br><small class="mut">${pc(r.v[c[0]] / r.tot)}</small></td>` : '<td class="r">—</td>').join('') + `<td class="r"><b>${r.ada ? rp(r.tot) : '—'}</b></td><td class="sl">${dt(r)}</td></tr>`; }).join('');
+  const T = coGabung(rows, 'TOT', 'Total');
+  $('tbl').tFoot.innerHTML = isi.length ? '<tr><td class="sl">Total</td>' + chs.map(c => `<td class="r">${rp(T.v[c[0]])}<br><small class="mut">${pc(T.v[c[0]] / T.tot)}</small></td>`).join('') + `<td class="r">${rp(T.tot)}</td><td class="sl">${dt(T)}</td></tr>` : '';
+  if (CHART_CO) { CHART_CO.destroy(); CHART_CO = null; }
+  const box = $('coBox'), hz = hp || !th;
+  if (!box.querySelector('canvas') || box.querySelector('.nochart')) box.innerHTML = '<canvas id="cCo"></canvas>';
+  if (!window.Chart) { box.innerHTML = '<div class="nochart">Grafik tidak bisa dimuat. Buka tabel di bawah.</div>'; bukaTabel(true); return; }
+  if (!isi.length) { box.style.height = '120px'; box.innerHTML = `<div class="nochart">${!th && res[0].err ? 'Data ' + esc(bulanLabel(CO_BULAN)) + ' tidak terbaca.' : 'Belum ada data channel.'}</div><canvas id="cCo" class="hide"></canvas>`; return; }
+  box.style.height = hz ? Math.max(hp ? 340 : 300, plot.length * (hp ? 46 : 44) + (hp ? 130 : 90)) + 'px' : '';
+  const val = (r, k) => !r.ada ? null : pr ? +(r.v[k] / r.tot * 100).toFixed(1) : r.v[k];
+  CHART_CO = new Chart($('cCo'), {type: 'bar', data: {labels: plot.map(r => r.nama), datasets: chs.map(c => ({label: c[1], k: c[0], data: plot.map(r => val(r, c[0])), backgroundColor: coWarna(c), borderWidth: 0, stack: 's'}))},
+    plugins: [{id: 'coLabel', afterDatasetsDraw(c) { const g = c.ctx, a = c.chartArea; g.save();
+      plot.forEach((r, i) => { let ujung = null; c.data.datasets.forEach((d, di) => { const el = c.getDatasetMeta(di).data[i]; if (el && d.data[i] != null) ujung = hz ? Math.max(ujung ?? -1e9, el.x) : Math.min(ujung ?? 1e9, el.y); });
+        const el0 = c.getDatasetMeta(0).data[i]; if (!el0) return;
+        const pos = hz ? el0.y : el0.x, ttl = !r.ada ? 'belum ada data' : (pr ? '' : rpS(r.tot).replace('Rp', '')), j = th ? juara(r) : null;
+        const tag = r.ada && r.data < .995 ? 'data ' + Math.round(r.data * 100) + '%' : '';
+        if (hz) { let x = r.ada ? (ujung ?? a.left) + 5 : a.left + 4; g.textAlign = 'left'; g.textBaseline = 'middle';
+          if (j) { const jt = '🏆 ' + j[1].split(' ').pop().replace('Outlet', 'Takeaway').replace('Shopping', 'Live'); g.font = '600 11px system-ui,sans-serif'; g.fillStyle = '#7a5a00'; g.fillText(jt, x, pos - (tag ? 0 : 0)); x += g.measureText(jt).width + 6; }
+          if (ttl) { g.font = (r.ada ? '700 ' : 'italic 400 ') + '11.5px system-ui,sans-serif'; g.fillStyle = r.ada ? '#2b2118' : '#9e9e9e'; g.fillText(ttl, x, pos); x += g.measureText(ttl).width + 6; }
+          if (tag) { g.font = '600 10.5px system-ui,sans-serif'; g.fillStyle = '#9e9e9e'; g.fillText(tag, x, pos); } }
+        else { g.textAlign = 'center'; g.textBaseline = 'bottom'; let y = (ujung ?? a.bottom) - 4;
+          if (tag) { g.font = '600 10.5px system-ui,sans-serif'; g.fillStyle = '#9e9e9e'; g.fillText(tag, pos, y); y -= 14; }
+          if (ttl) { g.font = '700 12px system-ui,sans-serif'; g.fillStyle = '#2b2118'; g.fillText(ttl, pos, y); y -= 15; }
+          if (j) { g.font = '600 12px system-ui,sans-serif'; g.fillStyle = '#7a5a00'; g.fillText('🏆 ' + j[1], pos, y); } } });
+      g.restore(); }}],
+    options: {indexAxis: hz ? 'y' : 'x', maintainAspectRatio: false, layout: {padding: hz ? {right: (pr ? 70 : 118) + (th ? 78 : 0)} : {top: 52}},
+      datasets: {bar: {categoryPercentage: .8, barPercentage: .85, maxBarThickness: hz ? 34 : 80}},
+      plugins: {legend: {position: hp ? 'top' : 'bottom', labels: {boxWidth: 12, font: {size: 12}}},
+        tooltip: {mode: 'index', callbacks: {title: it => { const r = plot[it[0].dataIndex]; return (th ? bulanLabel(r.bulan) : r.nama) + (r.ada ? ' · ' + rp(r.tot) : ''); },
+          label: x => { const r = plot[x.dataIndex], v = r.v[x.dataset.k]; return x.dataset.label + ': ' + rp(v) + ' · ' + pc(r.tot ? v / r.tot : 0); },
+          footer: it => { const r = plot[it[0].dataIndex]; return r.ada && r.data < .995 ? 'data ' + Math.round(r.data * 100) + '% dari omzet kasir' : ''; }}}},
+      scales: {[hz ? 'x' : 'y']: {stacked: true, beginAtZero: true, max: pr ? 100 : undefined, grace: pr ? 0 : '6%', ticks: {callback: v => pr ? v + '%' : rpS(v), maxTicksLimit: hp ? (th ? 3 : 4) : 7, maxRotation: 0}},
+        [hz ? 'y' : 'x']: {stacked: true, grid: {display: false}, ticks: {font: {size: 12, weight: '600'}}}}}});
+}
+
+function bukaTabel(on) { $('tblCard').classList.toggle('hide', !on); $('btnTbl').setAttribute('aria-expanded', on); $('btnTbl').textContent = on ? 'Sembunyikan tabel ▴' : 'Lihat tabel ▾'; }
+$('btnTbl').onclick = () => bukaTabel($('tblCard').classList.contains('hide'));
+['tip', 'chTip', 'coTip', 'thTip'].forEach(id => { $(id).querySelector('button').onclick = e => { e.stopPropagation(); $(id).classList.toggle('open'); }; });
+document.addEventListener('click', e => { ['tip', 'chTip', 'coTip', 'thTip'].forEach(id => { if (!$(id).contains(e.target)) $(id).classList.remove('open'); }); });
+document.querySelectorAll('#fView button').forEach(b => b.onclick = () => { VIEW = b.dataset.v; render(); });
+$('fChBulan').onchange = () => { CH_BULAN = $('fChBulan').value; render(); };
+document.querySelectorAll('#fChMode button').forEach(b => b.onclick = () => { CH_MODE = b.dataset.v; render(); });
+document.querySelectorAll('#fChMet button').forEach(b => b.onclick = () => { CH_MET = b.dataset.v; render(); });
+document.querySelectorAll('#fCoMode button').forEach(b => b.onclick = () => { CO_MODE = b.dataset.v; render(); });
+document.querySelectorAll('#fCoMet button').forEach(b => b.onclick = () => { CO_MET = b.dataset.v; render(); });
+$('fThTahun').onchange = () => { TH_TAHUN = +$('fThTahun').value; render(); }; $('fThOutlet').onchange = () => { TH_OUTLET = $('fThOutlet').value; render(); };
+$('fCoBulan').onchange = () => { CO_BULAN = $('fCoBulan').value; render(); }; $('fCoOutlet').onchange = () => { CO_OUTLET = $('fCoOutlet').value; render(); };
+document.querySelectorAll('#fMode button').forEach(b => b.onclick = () => { PER = b.dataset.v; render(); });
+$('btnRef').onclick = () => { Object.keys(CO_CACHE).forEach(k => delete CO_CACHE[k]); Object.keys(TH).forEach(k => { if (TH[k].done) delete TH[k]; }); if (VIEW === 'tahunan') render(); muat(); if (CHD || VIEW === 'channel') { CHD = null; muatChannel(true); } }; $('fBulan').onchange = muat;
+let rT, lw = innerWidth; addEventListener('resize', () => { clearTimeout(rT); rT = setTimeout(() => { if (DATA && (innerWidth < 640) !== (lw < 640)) render(); lw = innerWidth; }, 250); });
+window.hitung = hitung; window.hitungChannel = hitungChannel;
+muat();
+if (VIEW !== 'outlet') render();
+</script></body></html>

@@ -1,0 +1,24 @@
+# Cadangan & scratch
+*.pre-*
+*.bak
+*.tmp
+*.log
+sheet-pusat/pre-online/
+shots-online/
+node_modules/
+
+# Biner / file besar
+sheet-pusat/*.xlsx
+*.xlsx
+*.xls
+*.zip
+*.png
+*.jpg
+
+# Rahasia
+.env
+.env.*
+*.pem
+*.key
+credentials*.json
+service-account*.json

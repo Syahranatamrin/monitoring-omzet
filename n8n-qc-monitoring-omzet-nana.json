@@ -1,0 +1,471 @@
+{
+  "name": "QC - Monitoring Omzet Outlet (GET)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## QC - Monitoring Omzet Outlet (GET monitoring-omzet)\nMembaca sheet Target Control:\n- MASTER TARGET A1:B3 → periode, B33:D58 → target omzet bulanan per unit\n- MINGGUAN UNIT blok Minggu 1–4 (kolom UNIT BISNIS, TARGET, REALISASI)\nRealisasi kosong/0 = 'belum diisi' (null), tidak dianggap omzet nol.\nBobot minggu = total target minggu ÷ total target bulanan (27/27/23/23%).\nTidak mengubah data apa pun.",
+        "height": 300,
+        "width": 620
+      },
+      "id": "91bfbbbd-7e08-43fd-b496-fdf5d20419f7",
+      "name": "Catatan",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "monitoring-omzet",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "72556a85-1d03-4188-a182-af12e1acd7f2",
+      "name": "Webhook Monitoring Omzet",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        160
+      ],
+      "webhookId": "9b54281f-8763-449f-a8b1-d36c3db71e6d"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM",
+          "mode": "list",
+          "cachedResultName": "Target Control Pizza Nyantuy NOV",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "MASTER TARGET",
+          "mode": "name"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:B3"
+            }
+          },
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "c54dc5a0-4786-4434-a5cc-44721d3066b6",
+      "name": "Baca Periode",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        240,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM",
+          "mode": "list",
+          "cachedResultName": "Target Control Pizza Nyantuy NOV",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "MASTER TARGET",
+          "mode": "name"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "B33:D58"
+            }
+          },
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "34ea3dca-8fb7-4ca1-9e3c-96ad5e33f9c3",
+      "name": "Baca Target Unit",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        460,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM",
+          "mode": "list",
+          "cachedResultName": "Target Control Pizza Nyantuy NOV",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "MINGGUAN UNIT",
+          "mode": "name"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "B32:D57"
+            }
+          },
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "0be4ac28-6dc6-4681-87e6-210069bb29e0",
+      "name": "Baca Minggu 1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        680,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM",
+          "mode": "list",
+          "cachedResultName": "Target Control Pizza Nyantuy NOV",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "MINGGUAN UNIT",
+          "mode": "name"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "B61:D86"
+            }
+          },
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "eac3ac08-cb40-4cf1-869e-2c34da867848",
+      "name": "Baca Minggu 2",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        900,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM",
+          "mode": "list",
+          "cachedResultName": "Target Control Pizza Nyantuy NOV",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "MINGGUAN UNIT",
+          "mode": "name"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "B90:D115"
+            }
+          },
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "928b3b3f-a36d-45a5-ab5c-618ce2897e35",
+      "name": "Baca Minggu 3",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1120,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM",
+          "mode": "list",
+          "cachedResultName": "Target Control Pizza Nyantuy NOV",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM/edit"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "MINGGUAN UNIT",
+          "mode": "name"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "B119:D144"
+            }
+          },
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "9436b0e8-5534-4ec0-8605-e7f8877b5189",
+      "name": "Baca Minggu 4",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1340,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Susun data Monitoring Omzet Outlet dari sheet \"Target Control\".\n// Input node: Baca Periode (MASTER TARGET A1:B3), Baca Target Unit (MASTER TARGET B33:D58), Baca Minggu 1..4 (MINGGUAN UNIT, kolom UNIT BISNIS|TARGET|REALISASI).\n// Respon: {ok, generated_at, bulan:'YYYY-MM', periode:'November 2026', minggu, bobot_minggu:[4], outlet:[{nama, target_bulanan, target_per_minggu:[4], realisasi_per_minggu:[4 angka|null]}], gagal:[...], catatan:[...]}\n// Aturan: realisasi kosong atau 0 = belum diisi (null), BUKAN omzet nol. Angka tidak pernah dikarang.\nconst BOBOT_DEFAULT = [0.27, 0.27, 0.23, 0.23];   // cadangan bila total target bulanan 0 / tidak terbaca\nconst BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];\nconst t = v => (v == null ? '' : String(v).trim());\nconst key = v => t(v).toUpperCase().replace(/\\s+/g, ' ');\n// angka dari 58050000 / \"Rp58.050.000\" / \"58,050,000\" / \"\" → number | null\nconst num = v => {\n  if (typeof v === 'number') return isFinite(v) ? v : null;\n  let s = t(v).replace(/rp/i, '').replace(/\\s/g, '');\n  if (!s || s === '-') return null;\n  if (/^-?\\d{1,3}(\\.\\d{3})+(,\\d+)?$/.test(s)) s = s.replace(/\\./g, '').replace(',', '.');   // format Indonesia\n  else s = s.replace(/,/g, '');\n  const n = Number(s); return isFinite(n) ? n : null;\n};\n// Nama node bisa berakhiran angka di n8n (mis. \"Baca Minggu 11\" saat ditempel) → coba nama persis lalu +1..+5. null = tidak jalan.\nconst baca = node => {\n  for (const n of [node, 1, 2, 3, 4, 5].map((x, i) => i ? node + x : node)) {\n    try { return $(n).all().map(it => it.json); } catch (e) { /* coba nama berikutnya */ }\n  }\n  return null;\n};\nconst gagal = [], catatan = [];\nconst rowsOf = node => { const r = baca(node); if (r === null || r.some(x => x && x.error)) { gagal.push(node); return []; } return r.filter(Boolean); };\nconst vals = r => Object.keys(r).filter(k => k !== 'row_number').map(k => r[k]);\n\n// ---- periode (MASTER TARGET baris \"PERIODE:\") ----\nlet periodeDate = null;\nconst toDate = v => {\n  if (typeof v === 'number' && v > 20000 && v < 80000) return new Date(Date.UTC(1899, 11, 30) + v * 864e5);   // serial number Sheets\n  const s = t(v); let m = /^(\\d{4})-(\\d{1,2})-(\\d{1,2})/.exec(s); if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));\n  m = /^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})/.exec(s); if (m) return new Date(Date.UTC(+m[3], +m[2] - 1, +m[1]));      // dd/mm/yyyy (locale Indonesia)\n  return null;\n};\nfor (const r of rowsOf('Baca Periode')) {\n  const v = vals(r);\n  if (key(v[0]).startsWith('PERIODE')) periodeDate = toDate(v[1]);\n  // bila rentang dimulai di baris PERIODE, judul kolomnya sendiri berisi tanggal\n  Object.keys(r).forEach((k, i, ks) => { if (!periodeDate && key(k).startsWith('PERIODE') && ks[i + 1]) periodeDate = toDate(ks[i + 1]); });\n}\nif (!periodeDate) { const n = new Date(); periodeDate = new Date(Date.UTC(n.getFullYear(), n.getMonth(), 1)); catatan.push('PERIODE di MASTER TARGET tidak terbaca, memakai bulan berjalan'); }\nconst bulan = periodeDate.getUTCFullYear() + '-' + String(periodeDate.getUTCMonth() + 1).padStart(2, '0');\nconst periode = BULAN[periodeDate.getUTCMonth()] + ' ' + periodeDate.getUTCFullYear();\n\n// ---- target bulanan per unit ----\nconst outlet = [], idx = {};\nconst ambil = nama => { const k = key(nama); if (!idx[k]) { idx[k] = { nama: t(nama), target_bulanan: null, target_per_minggu: [null, null, null, null], realisasi_per_minggu: [null, null, null, null] }; outlet.push(idx[k]); } return idx[k]; };\nfor (const r of rowsOf('Baca Target Unit')) {\n  const nama = t(r['APA?'] ?? vals(r)[0]);\n  if (!nama) continue;\n  const tg = num(r['BERAPA RP'] ?? vals(r)[2]);\n  ambil(nama).target_bulanan = tg;\n}\n// ---- target & realisasi mingguan ----\nfor (let w = 0; w < 4; w++) {\n  for (const r of rowsOf('Baca Minggu ' + (w + 1))) {\n    const nama = t(r['UNIT BISNIS']);\n    if (!nama) continue;\n    const o = ambil(nama), tg = num(r['TARGET']), re = num(r['REALISASI']);\n    o.target_per_minggu[w] = tg;\n    o.realisasi_per_minggu[w] = re && re !== 0 ? re : null;   // kosong/0 = belum diisi\n  }\n}\n// outlet tanpa target bulanan di MASTER TARGET tapi ada target mingguan → jangan dikarang, catat saja\nconst hasil = outlet.filter(o => (o.target_bulanan || 0) > 0 || o.realisasi_per_minggu.some(v => v != null));\nhasil.filter(o => !(o.target_bulanan > 0)).forEach(o => catatan.push('Target bulanan ' + o.nama + ' kosong di MASTER TARGET'));\n\n// ---- bobot minggu = total target minggu ÷ total target bulanan ----\nconst totBulan = hasil.reduce((s, o) => s + (o.target_bulanan || 0), 0);\nlet bobot = [0, 1, 2, 3].map(w => { const s = hasil.reduce((a, o) => a + (o.target_per_minggu[w] || 0), 0); return totBulan > 0 ? Math.round(s / totBulan * 10000) / 10000 : null; });\nif (bobot.some(b => b == null || b <= 0)) { bobot = BOBOT_DEFAULT.slice(); catatan.push('Bobot minggu dari sheet tidak terbaca, memakai default 27/27/23/23%'); }\n\n// minggu pelaporan = minggu terakhir yang sudah ada realisasinya (0 = belum ada sama sekali)\nlet minggu = 0;\nfor (let w = 0; w < 4; w++) if (hasil.some(o => o.realisasi_per_minggu[w] != null)) minggu = w + 1;\nif (!minggu) catatan.push('Realisasi per unit di MINGGUAN UNIT belum diisi');\n\nreturn [{ json: { ok: true, generated_at: DateTime.now().setZone('Asia/Makassar').toISO(), sumber: 'Target Control · MINGGUAN UNIT', bulan, periode, minggu, bobot_minggu: bobot, outlet: hasil, gagal, catatan } }];\n"
+      },
+      "id": "ff5894e3-f637-48b8-926b-f69aa97c9aae",
+      "name": "Susun Monitoring",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, OPTIONS"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "3f1ee7d0-3339-4f99-8273-e83da9e9855b",
+      "name": "Respon Monitoring",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1800,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Monitoring Omzet": {
+      "main": [
+        [
+          {
+            "node": "Baca Periode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Periode": {
+      "main": [
+        [
+          {
+            "node": "Baca Target Unit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Target Unit": {
+      "main": [
+        [
+          {
+            "node": "Baca Minggu 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Minggu 1": {
+      "main": [
+        [
+          {
+            "node": "Baca Minggu 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Minggu 2": {
+      "main": [
+        [
+          {
+            "node": "Baca Minggu 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Minggu 3": {
+      "main": [
+        [
+          {
+            "node": "Baca Minggu 4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Minggu 4": {
+      "main": [
+        [
+          {
+            "node": "Susun Monitoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Susun Monitoring": {
+      "main": [
+        [
+          {
+            "node": "Respon Monitoring",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {}
+}

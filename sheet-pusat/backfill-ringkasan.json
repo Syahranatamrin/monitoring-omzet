@@ -1,0 +1,602 @@
+{
+ "rows": {
+  "2025-12|Sudiang": [
+   31,
+   180876650.0
+  ],
+  "2025-12|Barombong": [
+   31,
+   132435180.0
+  ],
+  "2025-12|Limbung": [
+   31,
+   171177850.0
+  ],
+  "2026-01|Gowa": [
+   31,
+   174491240.0
+  ],
+  "2026-01|Sudiang": [
+   31,
+   154758247.0
+  ],
+  "2026-01|Barombong": [
+   31,
+   95972456.0
+  ],
+  "2026-01|Limbung": [
+   31,
+   118389350.0
+  ],
+  "2026-01|Pare-Pare": [
+   7,
+   13403000.0
+  ],
+  "2026-02|Gowa": [
+   28,
+   150649686.0
+  ],
+  "2026-02|Sudiang": [
+   28,
+   130524406.0
+  ],
+  "2026-02|Barombong": [
+   28,
+   66819531.0
+  ],
+  "2026-02|Limbung": [
+   28,
+   83349650.0
+  ],
+  "2026-02|Pare-Pare": [
+   28,
+   109794102.0
+  ],
+  "2026-03|Sungai Poso": [
+   31,
+   151830925.0
+  ],
+  "2026-03|Gowa": [
+   31,
+   161224074.0
+  ],
+  "2026-03|Sudiang": [
+   31,
+   147950143.0
+  ],
+  "2026-03|Barombong": [
+   31,
+   64651124.0
+  ],
+  "2026-03|Limbung": [
+   31,
+   85553050.0
+  ],
+  "2026-03|Pare-Pare": [
+   31,
+   163148202.0
+  ],
+  "2026-04|Sungai Poso": [
+   30,
+   157706406.0
+  ],
+  "2026-04|Gowa": [
+   30,
+   163013556.0
+  ],
+  "2026-04|Sudiang": [
+   30,
+   152850281.0
+  ],
+  "2026-04|Barombong": [
+   30,
+   81376030.0
+  ],
+  "2026-04|Limbung": [
+   30,
+   86375850.0
+  ],
+  "2026-04|Pare-Pare": [
+   30,
+   150001202.0
+  ],
+  "2026-05|Sungai Poso": [
+   31,
+   149962350.0
+  ],
+  "2026-05|Gowa": [
+   30,
+   162784622.0
+  ],
+  "2026-05|Sudiang": [
+   31,
+   158239844.0
+  ],
+  "2026-05|Barombong": [
+   30,
+   85121386.0
+  ],
+  "2026-05|Limbung": [
+   31,
+   88246950.0
+  ],
+  "2026-05|Pare-Pare": [
+   30,
+   155596800.0
+  ],
+  "2026-06|Sungai Poso": [
+   30,
+   132551400.0
+  ],
+  "2026-06|Gowa": [
+   30,
+   152063672.0
+  ],
+  "2026-06|Sudiang": [
+   30,
+   129111116.0
+  ],
+  "2026-06|Barombong": [
+   30,
+   68209006.0
+  ],
+  "2026-06|Limbung": [
+   30,
+   74635700.0
+  ],
+  "2026-06|Pare-Pare": [
+   30,
+   116218250.0
+  ],
+  "2026-07|Sungai Poso": [
+   31,
+   149048200.0
+  ],
+  "2026-07|Gowa": [
+   31,
+   150410984.0
+  ],
+  "2026-07|Sudiang": [
+   31,
+   134777700.0
+  ],
+  "2026-07|Barombong": [
+   31,
+   67512550.0
+  ],
+  "2026-07|Limbung": [
+   31,
+   66394750.0
+  ],
+  "2026-07|Pare-Pare": [
+   31,
+   90864200.0
+  ],
+  "2026-08|Sungai Poso": [
+   31,
+   140659650.0
+  ],
+  "2026-08|Gowa": [
+   31,
+   137844350.0
+  ],
+  "2026-08|Sudiang": [
+   31,
+   134813900.0
+  ],
+  "2026-08|Barombong": [
+   31,
+   69230650.0
+  ],
+  "2026-08|Limbung": [
+   31,
+   65767300.0
+  ],
+  "2026-08|Pare-Pare": [
+   31,
+   77810000.0
+  ],
+  "2026-08|Tamalate": [
+   5,
+   7026500.0
+  ],
+  "2026-09|Sungai Poso": [
+   30,
+   109526800.0
+  ],
+  "2026-09|Gowa": [
+   30,
+   106654700.0
+  ],
+  "2026-09|Sudiang": [
+   30,
+   110922950.0
+  ],
+  "2026-09|Barombong": [
+   30,
+   55615750.0
+  ],
+  "2026-09|Limbung": [
+   30,
+   56302950.0
+  ],
+  "2026-09|Pare-Pare": [
+   30,
+   58524000.0
+  ],
+  "2026-09|Tamalate": [
+   30,
+   92988000.0
+  ],
+  "2026-10|Sungai Poso": [
+   26,
+   85894300.0
+  ],
+  "2026-10|Gowa": [
+   26,
+   93064050.0
+  ],
+  "2026-10|Sudiang": [
+   26,
+   93561550.0
+  ],
+  "2026-10|Barombong": [
+   26,
+   57571850.0
+  ],
+  "2026-10|Limbung": [
+   26,
+   48518350.0
+  ],
+  "2026-10|Pare-Pare": [
+   26,
+   54173000.0
+  ],
+  "2026-10|Tamalate": [
+   26,
+   65165000.0
+  ]
+ },
+ "anomali": {
+  "tahun_salah_diperbaiki": [
+   "Sudiang Februari2026 baris 5: 5026-02-04 → 2026-02-04"
+  ],
+  "kaspin_beda": [
+   "Sudiang 2025-12-10 (Desember baris 11): D=3,115,700 vs E+F+G=4,961,700 (selisih -1,846,000)"
+  ],
+  "tanggal_hilang": [
+   "Barombong 2026-05: tgl 28",
+   "Gowa 2026-05: tgl 27",
+   "Pare-Pare 2026-01: tgl 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24",
+   "Pare-Pare 2026-05: tgl 27",
+   "Tamalate 2026-08: tgl 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26"
+  ]
+ },
+ "tabs": [
+  [
+   "Sungai Poso",
+   "BulanBerlangsung",
+   26
+  ],
+  [
+   "Sungai Poso",
+   "Juni2026",
+   30
+  ],
+  [
+   "Sungai Poso",
+   "Mei2026",
+   31
+  ],
+  [
+   "Sungai Poso",
+   "April2026",
+   30
+  ],
+  [
+   "Sungai Poso",
+   "Maret2026",
+   31
+  ],
+  [
+   "Sungai Poso",
+   "Juli2026",
+   31
+  ],
+  [
+   "Sungai Poso",
+   "Agustus2026",
+   31
+  ],
+  [
+   "Sungai Poso",
+   "September2026",
+   30
+  ],
+  [
+   "Gowa",
+   "BulanBerlangsung",
+   26
+  ],
+  [
+   "Gowa",
+   "Juni2026",
+   30
+  ],
+  [
+   "Gowa",
+   "Mei2026",
+   30
+  ],
+  [
+   "Gowa",
+   "April2026",
+   30
+  ],
+  [
+   "Gowa",
+   "Maret2026",
+   31
+  ],
+  [
+   "Gowa",
+   "Januari2026",
+   31
+  ],
+  [
+   "Gowa",
+   "Februari2026",
+   28
+  ],
+  [
+   "Gowa",
+   "Juli2026",
+   31
+  ],
+  [
+   "Gowa",
+   "Agustus2026",
+   31
+  ],
+  [
+   "Gowa",
+   "September2026",
+   30
+  ],
+  [
+   "Sudiang",
+   "BulanBerlangsung",
+   26
+  ],
+  [
+   "Sudiang",
+   "Juni2026",
+   30
+  ],
+  [
+   "Sudiang",
+   "Mei2026",
+   31
+  ],
+  [
+   "Sudiang",
+   "April2026",
+   30
+  ],
+  [
+   "Sudiang",
+   "Maret2026",
+   31
+  ],
+  [
+   "Sudiang",
+   "Januari2026",
+   31
+  ],
+  [
+   "Sudiang",
+   "Februari2026",
+   28
+  ],
+  [
+   "Sudiang",
+   "Desember",
+   31
+  ],
+  [
+   "Sudiang",
+   "Juli2026",
+   31
+  ],
+  [
+   "Sudiang",
+   "Agustus2026",
+   31
+  ],
+  [
+   "Sudiang",
+   "September2026",
+   30
+  ],
+  [
+   "Barombong",
+   "BulanBerlangsung",
+   26
+  ],
+  [
+   "Barombong",
+   "Juni2026",
+   30
+  ],
+  [
+   "Barombong",
+   "Mei2026",
+   30
+  ],
+  [
+   "Barombong",
+   "April2026",
+   30
+  ],
+  [
+   "Barombong",
+   "Maret2026",
+   31
+  ],
+  [
+   "Barombong",
+   "Januari2026",
+   31
+  ],
+  [
+   "Barombong",
+   "Februari2026",
+   28
+  ],
+  [
+   "Barombong",
+   "Desember",
+   31
+  ],
+  [
+   "Barombong",
+   "Juli2026",
+   31
+  ],
+  [
+   "Barombong",
+   "Agustus2026",
+   31
+  ],
+  [
+   "Barombong",
+   "September2026",
+   30
+  ],
+  [
+   "Limbung",
+   "BulanBerlangsung",
+   26
+  ],
+  [
+   "Limbung",
+   "Juni2026",
+   30
+  ],
+  [
+   "Limbung",
+   "Mei2026",
+   31
+  ],
+  [
+   "Limbung",
+   "April2026",
+   30
+  ],
+  [
+   "Limbung",
+   "Maret2026",
+   31
+  ],
+  [
+   "Limbung",
+   "Januari2026",
+   31
+  ],
+  [
+   "Limbung",
+   "Februari2026",
+   28
+  ],
+  [
+   "Limbung",
+   "Desember",
+   31
+  ],
+  [
+   "Limbung",
+   "Juli2026",
+   31
+  ],
+  [
+   "Limbung",
+   "Agustus2026",
+   31
+  ],
+  [
+   "Limbung",
+   "September2026",
+   30
+  ],
+  [
+   "Pare-Pare",
+   "BulanBerlangsung",
+   26
+  ],
+  [
+   "Pare-Pare",
+   "Juni2026",
+   30
+  ],
+  [
+   "Pare-Pare",
+   "Mei2026",
+   30
+  ],
+  [
+   "Pare-Pare",
+   "April2026",
+   30
+  ],
+  [
+   "Pare-Pare",
+   "Maret2026",
+   31
+  ],
+  [
+   "Pare-Pare",
+   "Januari2026",
+   7
+  ],
+  [
+   "Pare-Pare",
+   "Februari2026",
+   28
+  ],
+  [
+   "Pare-Pare",
+   "Juli2026",
+   31
+  ],
+  [
+   "Pare-Pare",
+   "Agustus2026",
+   31
+  ],
+  [
+   "Pare-Pare",
+   "September2026",
+   30
+  ],
+  [
+   "Tamalate",
+   "BulanBerlangsung",
+   26
+  ],
+  [
+   "Tamalate",
+   "Agustus2026",
+   5
+  ],
+  [
+   "Tamalate",
+   "September2026",
+   30
+  ]
+ ],
+ "per_year": {
+  "2025": 93,
+  "2026": 1769
+ },
+ "last": "2026-10-26"
+}

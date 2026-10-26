@@ -1,0 +1,407 @@
+{
+  "name": "QC - Monitoring Omzet PUSAT (GET)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## QC - Monitoring Omzet PUSAT (GET monitoring-omzet-pusat?bulan=YYYY-MM)\nSumber: Rekap Omzet (Master) → config, outlet, target, target_channel · Data Omzet Harian <tahun> → tab data (hasil flow Sinkron Kasir).\nHanya MEMBACA, tidak menulis apa pun. Default bulan = bulan berjalan (WITA).\n• Per minggu: M1 1–7 · M2 8–14 · M3 15–21 · M4 22–akhir. Target minggu = target bulanan × bobot minggu bulan itu (tab target bobot_m1..m4, beda tiap bulan); target progres = bobot kumulatif; minggu berjalan diprorata hari.\n• Ranking: omzet tertinggi = 1, per minggu + akumulasi s/d minggu m (achieve % ditampilkan sebagai info).\n• Channel: Offline/Ojol dari ChannelHarian kasir (ch_offline/ch_ojol); Online Organik/Ads/Live Shopping dari tab OnlineHarian admin (ch_organik/ch_ads/ch_live);\n  WhatsApp kasir di hari admin belum isi = 'Online belum dipisah'. Target brand langsung: Offline→Takeaway, Organik→Online Organik, Ads→Online Ads, Live→Live Shopping (ch_live), Ojol→Ojol. CRM tidak terukur. Cakupan admin = hari OnlineHarian diisi ÷ hari ber-omzet.\nBaca gagal → `gagal`; data/config gagal → ok:false (dashboard pindah ke flow Oktober). Service Account perlu akses ke file master & data.",
+        "height": 340,
+        "width": 700
+      },
+      "id": "31961f09-0c1b-448e-97ef-3da1f73d0420",
+      "name": "Catatan",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "monitoring-omzet-pusat",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "174a3012-35f2-4333-8151-993532f83f26",
+      "name": "Webhook Monitoring Pusat",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        160
+      ],
+      "webhookId": "57b12ca2-d34c-4e1b-bcb3-7cb7fe96ed1d"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "config",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:C200"
+            }
+          }
+        }
+      },
+      "id": "1143e7fb-4713-49f5-8325-073488c0fce0",
+      "name": "Baca Config",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        220,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pilih periode dashboard pusat: ?bulan=YYYY-MM (default bulan berjalan WITA) → id file \"Data Omzet Harian <tahun>\" dari tab config master.\n// Output 1 item: {bulan, tahun, doc, tab_data, zona, hari_ini, gagal:[], catatan:[]}\nconst baca = node => { for (const n of [node, 1, 2, 3, 4, 5].map((x, i) => i ? node + x : node)) { try { return $(n).all().map(it => it.json); } catch (e) {} } return null; };\nconst gagal = [], catatan = [];\nconst cfgRows = baca('Baca Config');\nif (cfgRows === null || cfgRows.some(x => x && x.error)) gagal.push('Baca Config');\nconst cfg = {};\nfor (const r of cfgRows || []) { const k = String(r.key ?? r.Key ?? '').trim(); if (k) cfg[k] = r.value ?? r.Value ?? ''; }\nconst zona = String(cfg.zona || 'Asia/Makassar');\nconst now = DateTime.now().setZone(zona);\nconst wh = (baca('Webhook Monitoring Pusat') || [{}])[0] || {};\nconst q = wh.query || {};\nlet bulan = String(q.bulan || '').trim();\nif (!/^\\d{4}-(0[1-9]|1[0-2])$/.test(bulan)) { if (bulan) catatan.push('Parameter bulan \"' + bulan + '\" tidak valid (format YYYY-MM), memakai bulan berjalan'); bulan = now.toFormat('yyyy-MM'); }\nconst tahun = +bulan.slice(0, 4);\nconst doc = String(cfg['data_file_' + tahun] || '').trim();\nif (!doc) catatan.push('config data_file_' + tahun + ' belum diisi di tab config master');\nreturn [{ json: { bulan, tahun, doc: doc || 'BELUM-DIISI', ada_doc: !!doc, tab_data: String(cfg.tab_data || 'data'), zona,\n  hari_ini: now.toISODate(), sekarang: now.toISO({ suppressMilliseconds: true }), gagal, catatan } }];\n"
+      },
+      "id": "55d3ba7b-82f7-4291-bb04-0c7e80e368aa",
+      "name": "Pilih Periode",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        160
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "outlet",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "dcd34b33-807c-4eea-b99c-526dd2c85e65",
+      "name": "Baca Outlet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        660,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "target",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "e75730a8-1df5-4896-a666-579a8a5cb2f0",
+      "name": "Baca Target",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "target_channel",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "ba46dfa8-1fc8-4446-b75c-1cce83ce5d6d",
+      "name": "Baca Target Channel",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1100,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Pilih Periode').first().json.doc }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Pilih Periode').first().json.tab_data }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "357f0ae6-180b-44e8-9c31-9738ede6f17c",
+      "name": "Baca Data",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1320,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Susun Monitoring Pusat: target vs omzet per minggu per outlet, peringkat mingguan + akumulasi bulan, channel per outlet & brand.\n// Sumber: Rekap Omzet (Master) tab outlet/target/target_channel + \"Data Omzet Harian <tahun>\" tab data (difilter ke bulan diminta).\n// omzet harian = kolom omzet (Tunai + QRIS + Ojol, tanpa ongkir) hasil flow Sinkron Kasir. Kosong = belum diisi (bukan 0).\n// Minggu: M1 1–7, M2 8–14, M3 15–21, M4 22–akhir. Target progres = target bulanan × bobot kumulatif. Bobot dibaca per outlet dari tab target\n// (bobot_m1..m4, beda tiap bulan: Jul 28/24/22/26, Agu 26/26/24/24, Sep 24/28/27/21, Okt/Nov 27/27/23/23); 27/27/23/23% hanya cadangan bila kosong (+catatan).\n// Channel kasir (tab ChannelHarian → ch_offline/ch_whatsapp/ch_ojol) hanya dihitung di hari yang diisi; cakupan = hari diisi ÷ hari ber-omzet.\n// Online admin (tab OnlineHarian → ch_organik/ch_ads/ch_live): hari admin isi → Online Organik + Online Ads + Live Shopping; hari admin belum isi → WhatsApp kasir\n// masuk \"Online (belum dipisah)\". Mix per outlet = Offline + Organik + Ads + Live Shopping + Online belum dipisah + Ojol.\n// Target brand dibanding langsung: Offline→Takeaway Outlet, Organik→Online Organik, Ads→Online Ads, Live→Live Shopping, Ojol→Ojol (kolom Ojol closing kasir).\n// Kolom ch_live opsional: bila belum ada di Data Omzet Harian, Live Shopping = belum terbaca (bukan 0). CRM tidak terukur. % capaian hanya tampil bila cakupan hari = 100%.\n// Output 1 item (format sama dengan flow Oktober + tambahan ranking, channel, channel_brand).\nconst BOBOT_DEFAULT = [0.27, 0.27, 0.23, 0.23];\nconst OUTLET_DEFAULT = [['SPO','Sungai Poso'],['GWA','Gowa'],['SDG','Sudiang'],['BRB','Barombong'],['LMB','Limbung'],['PRE','Pare-Pare'],['TML','Tamalate']];\nconst BLN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];\nconst t = v => (v == null ? '' : String(v).trim());\nconst num = v => {\n  if (typeof v === 'boolean' || v === null || v === undefined) return null;\n  if (typeof v === 'number') return isFinite(v) ? v : null;\n  let s = t(v).replace(/rp/ig, '').replace(/ /g, '');\n  if (!s || s === '-' || s.startsWith('#')) return null;\n  if (/^-?\\d{1,3}(\\.\\d{3})+(,\\d+)?$/.test(s)) s = s.replace(/\\./g, '').replace(',', '.'); else s = s.replace(/,/g, '');\n  const n = Number(s); return isFinite(n) ? n : null;\n};\nconst pad = n => String(n).padStart(2, '0');\nconst toISO = v => {\n  if (typeof v === 'number') { if (!(v > 20000 && v < 80000)) return null; const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 864e5); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }\n  const s = t(v); let m;\n  if ((m = /^(\\d{4})-(\\d{1,2})-(\\d{1,2})/.exec(s))) return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);\n  if ((m = /^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{4})/.exec(s))) return m[3] + '-' + pad(m[2]) + '-' + pad(m[1]);\n  return null;\n};\nconst toYM = v => { if (typeof v === 'number') { const d = toISO(v); return d ? d.slice(0, 7) : ''; } const m = /^(\\d{4})-(\\d{1,2})/.exec(t(v)); return m ? m[1] + '-' + pad(m[2]) : ''; };\nconst boolv = v => v === true || ['TRUE', 'YA', '1'].includes(t(v).toUpperCase());\n\nfunction susun(inp) {\n  const { P, outletRows, targetRows, tcRows, dataRows, gagal, catatan } = inp;\n  const bulan = P.bulan, dim = new Date(Date.UTC(+bulan.slice(0, 4), +bulan.slice(5, 7), 0)).getUTCDate();\n  const W = [[1, 7], [8, 14], [15, 21], [22, dim]];\n  const mingguDari = d => (d <= 7 ? 0 : d <= 14 ? 1 : d <= 21 ? 2 : 3);\n  // outlet\n  let outl = (outletRows || []).filter(r => t(r.kode) && (r.aktif === undefined || r.aktif === '' || boolv(r.aktif)))\n    .map(r => ({ kode: t(r.kode).toUpperCase(), nama: t(r.nama) || t(r.kode), urut: num(r.urutan) ?? 99 }));\n  if (!outl.length) { outl = OUTLET_DEFAULT.map(([kode, nama], i) => ({ kode, nama, urut: i + 1 })); if (outletRows !== null) catatan.push('Tab outlet kosong, memakai daftar 7 outlet bawaan'); }\n  outl.sort((a, b) => a.urut - b.urut);\n  const O = Object.fromEntries(outl.map(o => [o.kode, Object.assign(o, { target_bulanan: null, target_per_minggu: [null, null, null, null],\n    realisasi_per_minggu: [null, null, null, null], hari_terisi: [0, 0, 0, 0], tgl_terakhir: null, hari: {},\n    ch: { offline: 0, whatsapp: 0, ojol: 0, organik: 0, ads: 0, live: 0, online_kasir: 0, omzet_hari_isi: 0, hari_isi: 0, hari_admin: 0, hari_admin_tanpa_kasir: 0, selisih: 0, hari_beda: 0, selisih_online: 0, hari_beda_online: 0,\n      per_minggu: [0, 1, 2, 3].map(() => ({ offline: 0, whatsapp: 0, ojol: 0, organik: 0, ads: 0, live: 0, online_kasir: 0, hari_isi: 0, hari_admin: 0 })) },\n    ojol_kasir: null, verif: 0, bobot: null })]));\n  // target\n  let bobot = null;\n  for (const r of targetRows || []) {\n    if (toYM(r.bulan) !== bulan) continue;\n    const o = O[t(r.outlet_kode).toUpperCase()]; if (!o) continue;\n    o.target_bulanan = num(r.target_bulanan);\n    const bb = [1, 2, 3, 4].map(i => num(r['bobot_m' + i]));\n    if (bb.every(x => x > 0)) { o.bobot = bb; if (!bobot) bobot = bb; }\n    o.target_m_sheet = [1, 2, 3, 4].map(i => num(r['target_m' + i]));\n  }\n  const bobotSumber = bobot ? 'tab target' : 'bawaan';\n  if (!bobot) { bobot = BOBOT_DEFAULT.slice(); if (outl.some(o => o.target_bulanan > 0)) catatan.push('Bobot minggu ' + bulan + ' (bobot_m1..m4) belum diisi di tab target → memakai bawaan 27/27/23/23%'); }\n  // target minggu = target bulanan × bobot minggu bulan itu (kolom target_m1..m4 hanya dipakai bila target bulanan kosong; bila beda >1% dari hitungan → catatan)\n  const tmBeda = [];\n  for (const o of outl) {\n    if (!o.bobot) o.bobot = bobot; const sh = o.target_m_sheet || [null, null, null, null];\n    o.target_per_minggu = [0, 1, 2, 3].map(j => o.target_bulanan !== null ? Math.round(o.target_bulanan * o.bobot[j]) : sh[j]);\n    if (o.target_bulanan !== null && sh.some((v, j) => v !== null && Math.abs(v - o.target_per_minggu[j]) > Math.max(1, 0.01 * o.target_per_minggu[j]))) tmBeda.push(o.nama);\n  }\n  if (tmBeda.length) catatan.push('Kolom target_m1..m4 di tab target tidak sama dengan target bulanan × bobot (' + tmBeda.join(', ') + ') → dipakai target bulanan × bobot');\n  if (!outl.some(o => o.target_bulanan > 0)) catatan.push('Target ' + bulan + ' belum diisi di tab target (Rekap Omzet Master) — kolom target kosong');\n  // data harian bulan ini\n  let nBaris = 0, tglTerakhir = 0, luarOutlet = new Set();\n  const kolomAdmin = (dataRows || []).some(r => 'ch_organik' in r || 'ch_ads' in r), kolomLive = (dataRows || []).some(r => 'ch_live' in r);\n  for (const r of dataRows || []) {\n    const key = t(r.key); let kode = t(r.outlet_kode).toUpperCase(), tg = toISO(r.tanggal);\n    if (key.includes('|')) { const [k, d] = key.split('|'); kode = kode || k.toUpperCase(); tg = toISO(d) || tg; }\n    if (!tg || tg.slice(0, 7) !== bulan) continue;\n    const o = O[kode]; if (!o) { luarOutlet.add(kode); continue; }\n    const omzet = num(r.omzet); if (omzet === null) continue;\n    const d = +tg.slice(8), w = mingguDari(d);\n    if (o.hari[d]) catatan.push(o.nama + ': tanggal ' + tg + ' ganda di data, dijumlah');\n    o.hari[d] = (o.hari[d] || 0) + omzet; nBaris++;\n    o.realisasi_per_minggu[w] = (o.realisasi_per_minggu[w] || 0) + omzet; o.hari_terisi[w]++;\n    o.tgl_terakhir = Math.max(o.tgl_terakhir || 0, d); tglTerakhir = Math.max(tglTerakhir, d);\n    const oj = num(r.ojol); if (oj !== null) o.ojol_kasir = (o.ojol_kasir || 0) + oj;\n    if (t(r.status).toLowerCase() === 'terverifikasi') o.verif++;\n    const cv = ['ch_offline', 'ch_whatsapp', 'ch_ojol'].map(f => num(r[f])), av = ['ch_organik', 'ch_ads', 'ch_live'].map(f => num(r[f]));\n    const C = o.ch, pm = C.per_minggu[w], isiK = cv.some(x => x !== null), isiA = av.some(x => x !== null);\n    if (isiK) {\n      const [a, b, c] = cv.map(x => x || 0);\n      C.offline += a; C.whatsapp += b; C.ojol += c; C.hari_isi++; C.omzet_hari_isi += omzet;\n      pm.offline += a; pm.whatsapp += b; pm.ojol += c; pm.hari_isi++;\n      if (!isiA) { C.online_kasir += b; pm.online_kasir += b; }\n      const kas = num(r.total_kaspin) ?? omzet, sel = num(r.ch_selisih) ?? (a + b + c - kas);\n      C.selisih += sel; if (Math.abs(sel) > 0.5) C.hari_beda++;\n    }\n    if (isiA) {\n      const [g, d, l] = av.map(x => x || 0);\n      C.organik += g; C.ads += d; C.live += l; C.hari_admin++; pm.organik += g; pm.ads += d; pm.live += l; pm.hari_admin++;\n      if (isiK) { const so = num(r.ch_selisih_online) ?? (g + d + l - (cv[1] || 0)); C.selisih_online += so; if (Math.abs(so) > 0.5) C.hari_beda_online++; } else C.hari_admin_tanpa_kasir++;\n    }\n  }\n  if (luarOutlet.size) catatan.push('Kode outlet di data tapi tidak ada di tab outlet: ' + [...luarOutlet].join(', '));\n  if (!nBaris && dataRows !== null) catatan.push('Belum ada omzet ' + bulan + ' di sheet pusat (jalankan flow Sinkron Kasir)');\n  // minggu pelaporan (sama dengan flow Oktober): minggu terakhir lengkap; minggu sesudahnya = berjalan (prorata hari)\n  let minggu = 0, mb = null;\n  if (tglTerakhir) {\n    const w = mingguDari(tglTerakhir);\n    if (tglTerakhir >= W[w][1]) minggu = w + 1;\n    else { minggu = w; mb = { minggu: w + 1, sampai_tgl: tglTerakhir, hari: tglTerakhir - W[w][0] + 1, hari_total: W[w][1] - W[w][0] + 1 }; if (!minggu) minggu = w + 1; }\n  }\n  const lag = outl.filter(o => o.tgl_terakhir && o.tgl_terakhir < tglTerakhir);\n  if (lag.length) catatan.push('Belum terisi s/d tgl ' + tglTerakhir + ': ' + lag.map(o => o.nama + ' (s/d tgl ' + o.tgl_terakhir + ')').join(', '));\n  const kosong = outl.filter(o => !o.tgl_terakhir); if (kosong.length && tglTerakhir) catatan.push('Belum ada omzet: ' + kosong.map(o => o.nama).join(', '));\n  // peringkat omzet per minggu + akumulasi s/d minggu m + bulan\n  const r4 = v => Math.round(v * 10000) / 10000;\n  const rankBy = (rows) => { rows.filter(x => x.omzet !== null).sort((a, b) => b.omzet - a.omzet).forEach((x, i) => { x.rank = i + 1; }); rows.forEach(x => { if (x.rank === undefined) x.rank = null; }); return rows.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99)); };\n  const prorata = w => (mb && mb.minggu === w + 1 ? Math.min(1, mb.hari / mb.hari_total) : 1);\n  const rkMinggu = [0, 1, 2, 3].map(w => ({ minggu: w + 1, tgl_awal: W[w][0], tgl_akhir: W[w][1], berjalan: !!(mb && mb.minggu === w + 1), rows: rankBy(outl.map(o => {\n    const T = o.target_per_minggu[w] !== null ? o.target_per_minggu[w] * prorata(w) : null, R = o.realisasi_per_minggu[w];\n    return { kode: o.kode, nama: o.nama, omzet: R, target: T !== null ? Math.round(T) : null, achieve: T > 0 && R !== null ? r4(R / T) : null, selisih: T !== null && R !== null ? Math.round(R - T) : null, hari: o.hari_terisi[w] };\n  })) }));\n  const kumB = (w, bb = bobot) => bb.slice(0, w).reduce((a, b) => a + b, 0);\n  const rkAkum = [1, 2, 3, 4].map(m => ({ sampai_minggu: m, rows: rankBy(outl.map(o => {\n    const vals = o.realisasi_per_minggu.slice(0, m).filter(v => v !== null), R = vals.length ? vals.reduce((a, b) => a + b, 0) : null;\n    const pk = kumB(m - 1, o.bobot) + o.bobot[m - 1] * prorata(m - 1), Tp = o.target_bulanan !== null ? o.target_bulanan * pk : null;\n    return { kode: o.kode, nama: o.nama, omzet: R, target_progres: Tp !== null ? Math.round(Tp) : null, target_bulanan: o.target_bulanan, achieve: Tp > 0 && R !== null ? r4(R / Tp) : null,\n      achieve_bulanan: o.target_bulanan > 0 && R !== null ? r4(R / o.target_bulanan) : null, selisih: Tp !== null && R !== null ? Math.round(R - Tp) : null, sisa: o.target_bulanan !== null && R !== null ? Math.max(o.target_bulanan - R, 0) : null };\n  })) }));\n  // channel per outlet\n  const hariOmzet = o => Object.keys(o.hari).length;\n  const MIX = ['offline', 'organik', 'ads', 'live', 'online_kasir', 'ojol'];\n  const chOut = outl.map(o => { const C = o.ch, ho = hariOmzet(o), K = C.hari_isi > 0, A = C.hari_admin > 0, ada = K || A;\n    const v = { offline: K ? C.offline : null, organik: A ? C.organik : null, ads: A ? C.ads : null, live: A && kolomLive ? C.live : null, online_kasir: K ? C.online_kasir : null, ojol: K ? C.ojol : null };\n    const tot = MIX.reduce((a, k) => a + (v[k] || 0), 0);\n    return Object.assign({ kode: o.kode, nama: o.nama }, v, { whatsapp: K ? C.whatsapp : null, online: ada ? (v.organik || 0) + (v.ads || 0) + (v.live || 0) + (v.online_kasir || 0) : null, total: ada ? tot : null,\n      porsi: tot > 0 ? Object.fromEntries(MIX.map(k => [k, r4((v[k] || 0) / tot)])) : null,\n      hari_isi: C.hari_isi, hari_admin: C.hari_admin, hari_admin_tanpa_kasir: C.hari_admin_tanpa_kasir, hari_omzet: ho,\n      cakupan: ho ? r4(C.hari_isi / ho) : null, cakupan_admin: ho ? r4(C.hari_admin / ho) : null,\n      status_live: !kolomAdmin || !kolomLive ? 'kolom_belum_ada' : !A ? 'belum' : 'ada',\n      status_admin: !kolomAdmin ? 'kolom_belum_ada' : !A ? 'belum' : C.hari_admin >= ho ? 'lengkap' : 'sebagian',\n      omzet_hari_isi: K ? C.omzet_hari_isi : null, omzet_bulan: ho ? Object.values(o.hari).reduce((a, b) => a + b, 0) : null,\n      selisih: K ? C.selisih : null, hari_beda: C.hari_beda, selisih_online: A && C.hari_admin > C.hari_admin_tanpa_kasir ? C.selisih_online : null, hari_beda_online: C.hari_beda_online,\n      ojol_kasir_bulan: o.ojol_kasir, per_minggu: C.per_minggu });\n  });\n  if (!kolomAdmin && dataRows && dataRows.length) catatan.push('Kolom ch_organik/ch_ads belum ada di Data Omzet Harian ' + P.tahun + ' → Online Organik/Ads belum terbaca (tambahkan judul kolom, lihat README)');\n  else if (kolomAdmin && !kolomLive && dataRows && dataRows.length) catatan.push('Kolom ch_live belum ada di Data Omzet Harian ' + P.tahun + ' → Live Shopping belum terbaca (tambahkan judul ch_live di kolom AN, lihat README)');\n  // channel brand: target_channel (Target Control) vs realisasi yang bisa diukur dari kasir\n  const tc = (tcRows || []).filter(r => toYM(r.bulan) === bulan && t(r.channel)).map(r => ({ channel: t(r.channel).toUpperCase(), kontribusi: num(r.kontribusi), target: num(r.target) }));\n  if (!tc.length && tcRows !== null) catatan.push('Target channel ' + bulan + ' belum diisi di tab target_channel');\n  const S = k => chOut.reduce((a, c) => a + (c[k] || 0), 0);\n  const omzetBulan = outl.reduce((a, o) => a + Object.values(o.hari).reduce((x, y) => x + y, 0), 0);\n  const hariIsiAll = chOut.reduce((a, c) => a + c.hari_isi, 0), hariOmzetAll = chOut.reduce((a, c) => a + c.hari_omzet, 0), hariAdminAll = chOut.reduce((a, c) => a + c.hari_admin, 0);\n  const covK = hariOmzetAll ? r4(hariIsiAll / hariOmzetAll) : null, covA = hariOmzetAll ? r4(hariAdminAll / hariOmzetAll) : null;\n  const ojolKasir = outl.reduce((a, o) => a + (o.ojol_kasir || 0), 0);\n  const pkBulan = minggu ? kumB(minggu - 1) + bobot[minggu - 1] * prorata(minggu - 1) : 0;\n  const tgtOf = name => { const x = tc.find(c => c.channel === name); return x ? x.target : null; };\n  const sumT = names => { const v = names.map(tgtOf).filter(x => x !== null); return v.length ? v.reduce((a, b) => a + b, 0) : null; };\n  const banding = [\n    { channel_kasir: 'Offline', channel_target: ['TAKEAWAY OUTLET'], dasar: 'kolom Offline tab ChannelHarian (kasir), hari yang diisi', realisasi: hariIsiAll ? S('offline') : null, cakupan: covK, langsung: true, terukur: true },\n    { channel_kasir: 'Online Organik', channel_target: ['ONLINE ORGANIK'], dasar: 'tab OnlineHarian (admin), hari yang diisi', realisasi: hariAdminAll ? S('organik') : null, cakupan: covA, langsung: true, terukur: true },\n    { channel_kasir: 'Online Ads', channel_target: ['ONLINE ADS'], dasar: 'tab OnlineHarian (admin), hari yang diisi', realisasi: hariAdminAll ? S('ads') : null, cakupan: covA, langsung: true, terukur: true },\n    { channel_kasir: 'Ojol', channel_target: ['OJOL'], dasar: 'kolom Ojol Penutupan Kasir (semua hari)', realisasi: hariOmzetAll ? ojolKasir : null, cakupan: hariOmzetAll ? 1 : null, langsung: true, terukur: true },\n    { channel_kasir: 'Live Shopping', channel_target: ['LIVE SHOPPING'], dasar: kolomLive ? 'tab OnlineHarian (admin) kolom Live Shopping, hari yang diisi' : 'kolom ch_live belum ada di Data Omzet Harian', realisasi: hariAdminAll && kolomLive ? S('live') : null, cakupan: kolomLive ? covA : null, langsung: true, terukur: true },\n    { channel_kasir: '—', channel_target: ['CRM'], dasar: 'tidak dicatat kasir maupun admin', realisasi: null, cakupan: null, langsung: false, terukur: false }\n  ].map(b => { const T = sumT(b.channel_target), Tp = T !== null ? T * pkBulan : null;\n    return Object.assign(b, { target_bulanan: T, target_progres: Tp !== null ? Math.round(Tp) : null, achieve_progres: b.terukur && Tp > 0 && b.realisasi !== null && b.cakupan === 1 ? r4(b.realisasi / Tp) : null }); });\n  const outlet = outl.map(o => ({ kode: o.kode, nama: o.nama, target_bulanan: o.target_bulanan, target_per_minggu: o.target_per_minggu, realisasi_per_minggu: o.realisasi_per_minggu,\n    hari_terisi: o.hari_terisi, tgl_terakhir: o.tgl_terakhir, hari_terverifikasi: o.verif, bobot_minggu: o.bobot }));\n  return { ok: true, sumber: 'Sheet Pusat · Rekap Omzet (Master) (target) · Data Omzet Harian ' + P.tahun + ' (omzet dari Penutupan Kasir, Tunai+QRIS+Ojol)',\n    sumber_realisasi: 'SHEET PUSAT', realisasi_cakupan: 'Tunai + QRIS + Ojol, tanpa ongkir', bulan, periode: BLN[+bulan.slice(5) - 1] + ' ' + bulan.slice(0, 4),\n    minggu, minggu_berjalan: mb, tgl_terakhir: tglTerakhir || null, hari_dalam_bulan: dim, bobot_minggu: bobot, bobot_sumber: bobotSumber, outlet,\n    ranking: { dasar: 'omzet tertinggi = 1 (achieve % ditampilkan sebagai info)', minggu: rkMinggu, akumulasi: rkAkum },\n    channel: { dasar: 'Offline/Ojol dari tab ChannelHarian kasir; Online Organik/Ads/Live Shopping dari tab OnlineHarian admin; Online belum dipisah = WhatsApp kasir di hari admin belum isi', outlet: chOut, kolom_admin: kolomAdmin, kolom_live: kolomLive,\n      total: { offline: hariIsiAll ? S('offline') : null, organik: hariAdminAll ? S('organik') : null, ads: hariAdminAll ? S('ads') : null, live: hariAdminAll && kolomLive ? S('live') : null, online_kasir: hariIsiAll ? S('online_kasir') : null, ojol: hariIsiAll ? S('ojol') : null,\n        whatsapp: hariIsiAll ? S('whatsapp') : null, hari_isi: hariIsiAll, hari_admin: hariAdminAll, hari_omzet: hariOmzetAll, cakupan: covK, cakupan_admin: covA } },\n    channel_brand: { target: tc, target_total: tc.reduce((a, c) => a + (c.target || 0), 0) || null, progres_bobot: r4(pkBulan), omzet_bulan: omzetBulan || null, banding,\n      online_belum_dipisah: hariIsiAll ? S('online_kasir') : null,\n      catatan: 'Offline→Takeaway Outlet dan Ojol→Ojol dari kasir; Online Organik/Ads/Live Shopping dari tab OnlineHarian admin (dibanding langsung). WhatsApp kasir di hari admin belum isi = Online belum dipisah (tidak masuk Organik/Ads/Live). CRM tidak terukur. % capaian hanya bila cakupan hari 100%.' },\n    gagal, catatan, generated_at: P.sekarang || null };\n}\n\n// ---- jalan (n8n) ----\nif (typeof $ === 'function') {\n  const baca = node => { for (const n of [node, 1, 2, 3, 4, 5].map((x, i) => i ? node + x : node)) { try { return $(n).all().map(it => it.json); } catch (e) {} } return null; };\n  const P = (baca('Pilih Periode') || [{}])[0] || {};\n  const gagal = [].concat(P.gagal || []), catatan = [].concat(P.catatan || []);\n  const rowsOf = node => { const r = baca(node); if (r === null || r.some(x => x && x.error)) { gagal.push(node); return null; } return r.filter(x => x && Object.keys(x).some(k => k !== 'row_number')); };\n  const inp = { P, gagal, catatan, outletRows: rowsOf('Baca Outlet'), targetRows: rowsOf('Baca Target'), tcRows: rowsOf('Baca Target Channel'),\n    dataRows: P.ada_doc === false ? (catatan.push('File data tahun ' + P.tahun + ' belum ada'), null) : rowsOf('Baca Data') };\n  if (!P.bulan) return [{ json: { ok: false, message: 'Periode tidak terbaca (Baca Config gagal?)', gagal, catatan } }];\n  if (gagal.includes('Baca Config')) return [{ json: { ok: false, message: 'Tab config Rekap Omzet (Master) tidak terbaca (cek akses Service Account)', bulan: P.bulan, gagal, catatan } }];\n  if (inp.dataRows === null) return [{ json: { ok: false, message: 'Data omzet sheet pusat tidak terbaca (cek akses Service Account ke file Data Omzet Harian ' + P.tahun + ')', bulan: P.bulan, gagal, catatan } }];\n  return [{ json: susun(inp) }];\n}\n"
+      },
+      "id": "6b07e5d6-85e0-40e1-9cf4-095ff20b1365",
+      "name": "Susun Monitoring Pusat",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        160
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, OPTIONS"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "5e9a6bd4-ba2d-484b-8ebd-8724d0a21c3f",
+      "name": "Respon Monitoring Pusat",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1760,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Monitoring Pusat": {
+      "main": [
+        [
+          {
+            "node": "Baca Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Config": {
+      "main": [
+        [
+          {
+            "node": "Pilih Periode",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pilih Periode": {
+      "main": [
+        [
+          {
+            "node": "Baca Outlet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Outlet": {
+      "main": [
+        [
+          {
+            "node": "Baca Target",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Target": {
+      "main": [
+        [
+          {
+            "node": "Baca Target Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Target Channel": {
+      "main": [
+        [
+          {
+            "node": "Baca Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Data": {
+      "main": [
+        [
+          {
+            "node": "Susun Monitoring Pusat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Susun Monitoring Pusat": {
+      "main": [
+        [
+          {
+            "node": "Respon Monitoring Pusat",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Makassar"
+  },
+  "pinData": {}
+}

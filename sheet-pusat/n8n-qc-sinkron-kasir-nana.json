@@ -1,0 +1,2306 @@
+{
+  "name": "QC - Sinkron Kasir → Sheet Pusat (30 menit)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## QC - Sinkron Kasir → Sheet Pusat (tiap 30 menit)\n1. Baca Config (Rekap Omzet (Master)/config) → Siapkan: periode, id file Data Omzet Harian <tahun>, tab arsip bulan lalu.\n2. Baca Target + Baca Data Tahun Ini + Baca Kasir ×7 (BulanBerlangsung A1:Z60, kolom per NAMA judul).\n2b. Baca Channel ×7 (tab ChannelHarian seluruhnya; judul Tanggal/Whatsapp/Offline/Ojol, huruf bebas) → ch_whatsapp/ch_offline/ch_ojol,\n   ch_selisih = total channel − TOTAL KASPIN. ch_* TIDAK ikut kunci verifikasi (data marketing), dibandingkan langsung (idempoten).\n2c. Baca Online ×7 (tab OnlineHarian, diisi ADMIN; judul Tanggal / Online Organik|Organik / Online Ads|Ads / Live Shopping|Live (opsional)) → ch_organik, ch_ads, ch_live.\n   ch_online = organik+ads+live (ch_online_sumber=admin) atau WhatsApp kasir bila admin belum isi (=kasir). ch_selisih_online = (organik+ads+live) − WhatsApp kasir. Tulis per NAMA judul kolom (autoMap): ch_live boleh ditambah di kolom AN.\n   Tab belum ada → dilewati, ok tetap true (dicatat 'opsional' di log sekali sehari). Kolom baru belum ada di Data Omzet Harian → tidak ditulis + catatan.\n3. Tgl 1–7: Baca Arsip ×7 (tab arsip bulan lalu, mis. September2026) + Baca Data Tahun Lalu.\n4. Hitung Sinkron: row_hash, upsert per key outlet|tanggal; baris status terverifikasi/kunci TIDAK ditimpa (konflik → log);\n   sheet pusat gagal dibaca → tidak menulis apa pun.\n5. Tulis data (appendOrUpdate kolom key) + rekap_mingguan/bulanan/tahunan + log (hanya kalau ada perubahan/gagal).\nomzet = tunai + qris + ojol (tanpa ongkir). Service Account harus EDITOR di file Master & Data Omzet Harian.\nTahun baru: buat file 'Data Omzet Harian <tahun>' (tab data, judul sama) lalu isi config data_file_<tahun>.\nOutlet baru: duplikat node Baca Kasir (+ Baca Arsip + Baca Channel + Baca Online), ganti id, tambah di OUTLET (Hitung Sinkron) & tab outlet.",
+        "height": 420,
+        "width": 760
+      },
+      "id": "1cb74f09-f91d-4a6c-accc-620f9c673a8a",
+      "name": "Catatan",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        -520
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 30
+            }
+          ]
+        }
+      },
+      "id": "dd7fe65c-9e7d-4f34-8b85-425fc9985465",
+      "name": "Tiap 30 Menit",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "config",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:C200"
+            }
+          }
+        }
+      },
+      "id": "165fb6a3-b4fd-43f4-8325-ad5dd1f85898",
+      "name": "Baca Config",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        220,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Siapkan sinkron kasir → sheet pusat: baca tab `config` di \"Rekap Omzet (Master)\", tentukan periode & file tujuan.\n// Output 1 item: {ok, sekarang, tanggal, tahun, bulan, tgl, sync_bulan_lalu, bulan_lalu, tahun_lalu, tab_arsip,\n//   doc_ini, doc_lalu, tab_data, hari_sync_bulan_lalu, status_terkunci:[..], jam_lapor_konflik, zona, gagal:[], catatan:[]}\nconst BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];\nconst baca = node => {\n  for (const n of [node, 1, 2, 3, 4, 5].map((x, i) => i ? node + x : node)) {\n    try { return $(n).all().map(it => it.json); } catch (e) { /* coba nama berikutnya */ }\n  }\n  return null;\n};\nconst gagal = [], catatan = [];\nconst rows = baca('Baca Config');\nif (rows === null || rows.some(x => x && x.error)) gagal.push('Baca Config');\nconst cfg = {};\nfor (const r of rows || []) {\n  const k = String(r.key ?? r.Key ?? '').trim(); if (k) cfg[k] = r.value ?? r.Value ?? '';\n}\nconst zona = String(cfg.zona || 'Asia/Makassar');\nconst now = DateTime.now().setZone(zona);\nconst hariLalu = Number(cfg.hari_sync_bulan_lalu ?? 7) || 0;\nconst lalu = now.startOf('month').minus({ days: 1 });\nconst fmt = String(cfg.format_tab_arsip || '{Bulan}{Tahun}');\nconst tabArsip = fmt.replace('{Bulan}', BULAN[lalu.month - 1]).replace('{Tahun}', String(lalu.year)).replace('{MM}', String(lalu.month).padStart(2, '0'));\nconst docIni = String(cfg['data_file_' + now.year] || '').trim();\nconst docLalu = String(cfg['data_file_' + lalu.year] || '').trim();\nconst sync = now.day <= hariLalu;\nif (!docIni) catatan.push('config data_file_' + now.year + ' belum diisi — buat file \"Data Omzet Harian ' + now.year + '\" lalu isi id-nya di tab config');\nif (sync && !docLalu) catatan.push('config data_file_' + lalu.year + ' belum diisi');\nreturn [{ json: {\n  ok: gagal.length === 0 && !!docIni,\n  sekarang: now.toISO({ suppressMilliseconds: true }), tanggal: now.toISODate(), tahun: now.year, bulan: now.toFormat('yyyy-MM'), tgl: now.day,\n  sync_bulan_lalu: sync, bulan_lalu: lalu.toFormat('yyyy-MM'), tahun_lalu: lalu.year, tab_arsip: tabArsip,\n  doc_ini: docIni || 'BELUM-DIISI', doc_lalu: (sync ? docLalu : '') || docIni || 'BELUM-DIISI', tab_data: String(cfg.tab_data || 'data'),\n  hari_sync_bulan_lalu: hariLalu,\n  status_terkunci: String(cfg.status_terkunci || 'terverifikasi,kunci').split(',').map(s => s.trim().toLowerCase()).filter(Boolean),\n  jam_lapor_konflik: Number(cfg.jam_lapor_konflik ?? 7), zona, gagal, catatan } }];\n"
+      },
+      "id": "a7ac6167-166d-40c3-bbac-956a88bee1c2",
+      "name": "Siapkan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "target",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "28943602-75ca-4fb6-9a9e-69029e7ebac3",
+      "name": "Baca Target",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        660,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.doc_ini }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_data }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "fe2394e3-8c0a-4929-bf0b-78e14e059f4b",
+      "name": "Baca Data Tahun Ini",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        880,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1bXMeeepW0xQYODMeZa1b4J24Aq2IJyPwDcdwE_FyJmo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "BulanBerlangsung",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "85ec9ac7-9a5c-41c1-9464-cf17b4e5c511",
+      "name": "Baca Kasir Sungai Poso",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1100,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aOE3vsgpHL-L51t3S9THMxodI4s0rd93zOlTacGWXzA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "BulanBerlangsung",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "94e35c41-a426-4d02-bad5-30ad47724931",
+      "name": "Baca Kasir Gowa",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1320,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1EIi_LXX-9itLFYxrT4f8c8ARR5NiE4pBRJrIbtW4QG0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "BulanBerlangsung",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "cfd89708-f178-4d2c-80bf-a6b1b252e47d",
+      "name": "Baca Kasir Sudiang",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1540,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1vCVm_J05AFEffsEbXAk7N_0_DU49gJdERwcyHCFXgtE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "BulanBerlangsung",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "d89ee8da-f9f9-41c9-855b-b0603d905811",
+      "name": "Baca Kasir Barombong",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1760,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1yLsev_paGOjL1GA0xyrgwxEx9NamS8q-7WNYn_4gPhc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "BulanBerlangsung",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "39829cb8-b8dc-4b9a-aca9-2a058db7ad50",
+      "name": "Baca Kasir Limbung",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1yV0ZdsR9u80CHqNQ_FXDZwX8-T_fnJ1V9w8htXKqhAQ",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "BulanBerlangsung",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "f482dfae-ebc9-4ebe-a6a9-19ee2a16859f",
+      "name": "Baca Kasir Pare-Pare",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2200,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1zyJYms0U7P-0mJZvpBqxfB7Iyr0ThVG2ptaLEpiyKUU",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "BulanBerlangsung",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "ebe77903-1eca-4b50-8383-3437d44b0eff",
+      "name": "Baca Kasir Tamalate",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2420,
+        160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1bXMeeepW0xQYODMeZa1b4J24Aq2IJyPwDcdwE_FyJmo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ChannelHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "04803ad4-0f4d-4157-8d58-106ac5146881",
+      "name": "Baca Channel Sungai Poso",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1100,
+        420
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aOE3vsgpHL-L51t3S9THMxodI4s0rd93zOlTacGWXzA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ChannelHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "c07002f3-82d8-42dc-858b-32aed3fc355f",
+      "name": "Baca Channel Gowa",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1320,
+        420
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1EIi_LXX-9itLFYxrT4f8c8ARR5NiE4pBRJrIbtW4QG0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ChannelHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "c911074d-4399-44e3-8bce-5e14c54844aa",
+      "name": "Baca Channel Sudiang",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1540,
+        420
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1vCVm_J05AFEffsEbXAk7N_0_DU49gJdERwcyHCFXgtE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ChannelHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "80f551b9-1135-4fc8-a5ee-13d64a2e2838",
+      "name": "Baca Channel Barombong",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1760,
+        420
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1yLsev_paGOjL1GA0xyrgwxEx9NamS8q-7WNYn_4gPhc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ChannelHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "5715aaa1-126d-40d6-8a45-73902d6f10a8",
+      "name": "Baca Channel Limbung",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        420
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1yV0ZdsR9u80CHqNQ_FXDZwX8-T_fnJ1V9w8htXKqhAQ",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ChannelHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "72acaa03-c869-4639-b838-db49ffdb4697",
+      "name": "Baca Channel Pare-Pare",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2200,
+        420
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1zyJYms0U7P-0mJZvpBqxfB7Iyr0ThVG2ptaLEpiyKUU",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "ChannelHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "0bdfeea6-635e-43be-9793-b383cbfa8243",
+      "name": "Baca Channel Tamalate",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2420,
+        420
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1bXMeeepW0xQYODMeZa1b4J24Aq2IJyPwDcdwE_FyJmo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "OnlineHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "dfd6fdcf-5e57-4341-b75d-fe5dfdef3840",
+      "name": "Baca Online Sungai Poso",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1100,
+        620
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "notes": "Tab OnlineHarian (admin). Tab belum ada → dilewati (tidak membuat sync gagal)."
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aOE3vsgpHL-L51t3S9THMxodI4s0rd93zOlTacGWXzA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "OnlineHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "a6f40817-3c9e-4477-853c-7761c84c6c24",
+      "name": "Baca Online Gowa",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1320,
+        620
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "notes": "Tab OnlineHarian (admin). Tab belum ada → dilewati (tidak membuat sync gagal)."
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1EIi_LXX-9itLFYxrT4f8c8ARR5NiE4pBRJrIbtW4QG0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "OnlineHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "d347a8c8-b515-4667-b1ee-409151555c5b",
+      "name": "Baca Online Sudiang",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1540,
+        620
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "notes": "Tab OnlineHarian (admin). Tab belum ada → dilewati (tidak membuat sync gagal)."
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1vCVm_J05AFEffsEbXAk7N_0_DU49gJdERwcyHCFXgtE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "OnlineHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "285beb40-72b6-4c6b-b40e-02f85a2b3087",
+      "name": "Baca Online Barombong",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1760,
+        620
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "notes": "Tab OnlineHarian (admin). Tab belum ada → dilewati (tidak membuat sync gagal)."
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1yLsev_paGOjL1GA0xyrgwxEx9NamS8q-7WNYn_4gPhc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "OnlineHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "f96489bf-d0b1-4ebf-b455-d77a2b664fb7",
+      "name": "Baca Online Limbung",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1980,
+        620
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "notes": "Tab OnlineHarian (admin). Tab belum ada → dilewati (tidak membuat sync gagal)."
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1yV0ZdsR9u80CHqNQ_FXDZwX8-T_fnJ1V9w8htXKqhAQ",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "OnlineHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "89546863-ca46-4589-b0f6-35ecdd02268d",
+      "name": "Baca Online Pare-Pare",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2200,
+        620
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "notes": "Tab OnlineHarian (admin). Tab belum ada → dilewati (tidak membuat sync gagal)."
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1zyJYms0U7P-0mJZvpBqxfB7Iyr0ThVG2ptaLEpiyKUU",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "OnlineHarian",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "3d03d02b-0bef-4b06-9b1a-531d79fe3af0",
+      "name": "Baca Online Tamalate",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2420,
+        620
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput",
+      "notes": "Tab OnlineHarian (admin). Tab belum ada → dilewati (tidak membuat sync gagal)."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "23832a39-8ba9-437a-a17f-52f36ad8f453",
+              "leftValue": "={{ $('Siapkan').first().json.sync_bulan_lalu }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "d21caf02-e45e-4cd3-b92e-68b9b00c3f80",
+      "name": "Sinkron Bulan Lalu?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1bXMeeepW0xQYODMeZa1b4J24Aq2IJyPwDcdwE_FyJmo",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_arsip }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "c3adcdd0-7b8c-4f38-ba93-57c1663444c2",
+      "name": "Baca Arsip Sungai Poso",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2860,
+        -60
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1aOE3vsgpHL-L51t3S9THMxodI4s0rd93zOlTacGWXzA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_arsip }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "80f4d6d7-a15f-4d84-96b7-37a832980082",
+      "name": "Baca Arsip Gowa",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3080,
+        -60
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1EIi_LXX-9itLFYxrT4f8c8ARR5NiE4pBRJrIbtW4QG0",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_arsip }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "7bfaf7be-98f6-4baa-bb27-0dfdc1d7c9e7",
+      "name": "Baca Arsip Sudiang",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3300,
+        -60
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1vCVm_J05AFEffsEbXAk7N_0_DU49gJdERwcyHCFXgtE",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_arsip }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "36a8e91e-1ee9-4070-a426-36ff77fbf78c",
+      "name": "Baca Arsip Barombong",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3520,
+        -60
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1yLsev_paGOjL1GA0xyrgwxEx9NamS8q-7WNYn_4gPhc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_arsip }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "d53880db-dcb7-4535-b137-dd26aecc2cb7",
+      "name": "Baca Arsip Limbung",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3740,
+        -60
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1yV0ZdsR9u80CHqNQ_FXDZwX8-T_fnJ1V9w8htXKqhAQ",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_arsip }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "c218c22a-4ed7-4e22-a4a5-60c9c926f9c4",
+      "name": "Baca Arsip Pare-Pare",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3960,
+        -60
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "1zyJYms0U7P-0mJZvpBqxfB7Iyr0ThVG2ptaLEpiyKUU",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_arsip }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:Z60"
+            }
+          }
+        }
+      },
+      "id": "91067966-fc2a-431f-992e-c1692921632f",
+      "name": "Baca Arsip Tamalate",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4180,
+        -60
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.doc_lalu }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_data }}",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          }
+        }
+      },
+      "id": "0226f361-c075-47da-ae64-66731edebd19",
+      "name": "Baca Data Tahun Lalu",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4400,
+        -60
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "executeOnce": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Hitung sinkron Penutupan Kasir → \"Data Omzet Harian <tahun>\" (tab data) + rekap di \"Rekap Omzet (Master)\".\n// Input: Siapkan, Baca Target (master/target), Baca Data Tahun Ini, Baca Kasir <Outlet> ×7 (BulanBerlangsung A1:Z60),\n//   [hari 1..hari_sync_bulan_lalu] Baca Arsip <Outlet> ×7 (tab arsip bulan lalu) + Baca Data Tahun Lalu.\n// Kolom kasir dipetakan per NAMA judul (dinormalisasi; sama persis dengan backfill.py) — posisi kolom boleh beda antar file/bulan.\n// Aturan upsert (kunci = outlet_kode|tanggal):\n//   - baris baru → tulis; row_hash beda → tulis; row_hash sama → lewati.\n//   - baris di pusat ber-status terkunci (config status_terkunci, default terverifikasi,kunci) TIDAK ditimpa;\n//     bila isi kasir berbeda → dicatat di log sebagai konflik (sekali sehari, jam jam_lapor_konflik).\n//   - tanggal yang ada di tab arsip dan BulanBerlangsung → arsip dipakai.\n//   - kalau sheet pusat gagal dibaca → TIDAK menulis data apa pun (supaya baris terkunci aman), hanya log.\n// omzet = tunai + qris + ojol (tanpa ongkir). Bulan lama tanpa pemisahan QRIS/Ojol: non_tunai_total saja.\n// Channel (tab ChannelHarian per outlet, dibaca node Baca Channel <Outlet>, judul dicocokkan per NAMA, huruf besar/kecil bebas):\n//   Offline→ch_offline, Whatsapp→ch_whatsapp, Ojol→ch_ojol, ch_selisih = total channel − total_kaspin (hanya hari yang ada isinya).\n//   ch_* = data marketing → TIDAK ikut kunci verifikasi & tidak masuk row_hash; dibandingkan langsung dengan nilai pusat (idempoten).\n//   Tanggal yang tidak ada di tab / tab gagal dibaca → nilai ch_* di pusat dibiarkan. Baris tab ada tapi kosong → ch_* dikosongkan.\n// Online admin (tab OnlineHarian per outlet, diisi ADMIN, dibaca node Baca Online <Outlet>; judul Tanggal, Online Organik|Organik, Online Ads|Ads,\n//   Live Shopping|Live (OPSIONAL: tab versi lama tanpa kolom Live tetap jalan, ch_live dikosongkan)):\n//   → ch_organik, ch_ads, ch_live. ch_whatsapp tetap = WhatsApp versi kasir.\n//   ch_online = organik+ads+live bila admin sudah isi (ch_online_sumber 'admin'), kalau belum = WhatsApp kasir ('kasir'), kosong bila dua-duanya kosong.\n//   ch_selisih_online = (organik+ads+live) − WhatsApp kasir (hanya bila dua-duanya diisi). ch_selisih TETAP = total channel KASIR − total_kaspin.\n//   Tab OnlineHarian belum ada / gagal dibaca → TIDAK membuat ok:false (opsional): dicatat di ringkas.gagal_opsional, masuk log sekali sehari.\n//   Kolom ch_organik… belum ada di file Data Omzet Harian → kolom itu tidak dibandingkan (tidak menulis berulang) + catatan untuk menambah kolom.\n// Output 1 item: {tulis_ini:[], tulis_lalu:[], rekap_mingguan:[], rekap_bulanan:[], rekap_tahunan:[], log:[0..1], ringkas:{...}}\nconst OUTLET = [\n  { kode: 'SPO', nama: 'Sungai Poso', node: 'Sungai Poso' },\n  { kode: 'GWA', nama: 'Gowa', node: 'Gowa' },\n  { kode: 'SDG', nama: 'Sudiang', node: 'Sudiang' },        // = GOA RIA di Target Control\n  { kode: 'BRB', nama: 'Barombong', node: 'Barombong' },\n  { kode: 'LMB', nama: 'Limbung', node: 'Limbung' },\n  { kode: 'PRE', nama: 'Pare-Pare', node: 'Pare-Pare' },\n  { kode: 'TML', nama: 'Tamalate', node: 'Tamalate' }];\nconst COLS = ['key','tanggal','bulan','minggu_ke','outlet_kode','outlet_nama','paket','kasir','total_kaspin','tunai','qris','ojol',\n  'non_tunai_total','omzet','ongkir_masuk','tunai_real','uang_tunai_ada','ongkir_keluar','real_qris','real_ojol',\n  'penyesuaian_tunai','ket_peny_tunai','penyesuaian_nontunai','ket_peny_nontunai','verif_finance','verif_spv','status',\n  'ch_offline','ch_whatsapp','ch_ojol','ch_selisih','sumber','row_hash','synced_at',\n  'ch_organik','ch_ads','ch_online','ch_online_sumber','ch_selisih_online',   // tambahan OnlineHarian (di akhir tabel, AI:AM)\n  'ch_live'];   // AN: Live Shopping (admin). Flow menulis per NAMA judul kolom, jadi posisi kolom bebas.\nconst HASH_FIELDS = ['tanggal','outlet_kode','paket','kasir','total_kaspin','tunai','qris','ojol','non_tunai_total','omzet','ongkir_masuk',\n  'tunai_real','uang_tunai_ada','ongkir_keluar','real_qris','real_ojol','penyesuaian_tunai','ket_peny_tunai',\n  'penyesuaian_nontunai','ket_peny_nontunai','verif_finance','verif_spv'];\nconst NUMF = new Set(['paket','total_kaspin','tunai','qris','ojol','_nt_gabung','ongkir_masuk','tunai_real','uang_tunai_ada','ongkir_keluar',\n  'real_qris','real_ojol','_real_nt_gabung','penyesuaian_tunai','penyesuaian_nontunai','_saldo_deposit']);\nconst BLN = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MEI: 5, MAY: 5, JUN: 6, JUL: 7, AGU: 8, AGT: 8, AUG: 8, SEP: 9, OKT: 10, OCT: 10, NOV: 11, NOP: 11, DES: 12, DEC: 12 };\nconst t = v => (v == null ? '' : String(v).trim());\nconst norm = h => t(h).toUpperCase().replace(/N0N/g, 'NON').replace(/[^A-Z0-9]/g, '');\nfunction fieldOf(n, hasRealOjol, hasOjol) {\n  if (n === 'TANGGAL') return 'tanggal';\n  if (n === 'PENJUALANPAKET') return 'paket';\n  if (n === 'SALDOAWALDEPOSIT') return '_saldo_deposit';\n  if (n === 'NAMAKASIR') return 'kasir';\n  if (n === 'TOTALKASPIN') return 'total_kaspin';\n  if (n === 'PENJUALANTUNAI') return 'tunai';\n  if (n.startsWith('PENJUALANNONTUNAIQRIS')) return 'qris';\n  if (n.startsWith('PENJUALANNONTUNAIOJOL')) return 'ojol';\n  if (n === 'PENJUALANNONTUNAI') return hasOjol ? 'qris' : '_nt_gabung';\n  if (n === 'PEMASUKANONGKIR') return 'ongkir_masuk';\n  if (n === 'TUNAIREAL') return 'tunai_real';\n  if (n === 'UANGTUNAIYANGADA') return 'uang_tunai_ada';\n  if (n === 'PENGELUARANONGKIR') return 'ongkir_keluar';\n  if (n.startsWith('NONTUNAIREALQRIS')) return 'real_qris';\n  if (n.startsWith('NONTUNAIREALOJOL')) return 'real_ojol';\n  if (n === 'NONTUNAIREAL') return hasRealOjol ? 'real_qris' : '_real_nt_gabung';\n  if (n === 'PENYESUAIANTUNAI') return 'penyesuaian_tunai';\n  if (n === 'KETERANGAN') return 'ket_peny_tunai';\n  if (n === 'PENYESUAIANNONTUNAI') return 'penyesuaian_nontunai';\n  if (n === 'KETERANGAN2') return 'ket_peny_nontunai';\n  if (n === 'VERIFIKASIFINANCE') return 'verif_finance';\n  if (n.startsWith('VERIFIKASISPV')) return 'verif_spv';\n  return null;\n}\nconst num = v => {\n  if (typeof v === 'boolean') return null;\n  if (typeof v === 'number') return isFinite(v) ? v : null;\n  let s = t(v).replace(/rp/ig, '').replace(/ /g, '');\n  if (!s || s === '-' || s.startsWith('#')) return null;\n  if (/^-?\\d{1,3}(\\.\\d{3})+(,\\d+)?$/.test(s)) s = s.replace(/\\./g, '').replace(',', '.'); else s = s.replace(/,/g, '');\n  if (!/^[-+]?(\\d+\\.?\\d*|\\.\\d+)(e[-+]?\\d+)?$/i.test(s)) return null;\n  const n = Number(s); return isFinite(n) ? n : null;\n};\nconst boolv = v => {\n  if (typeof v === 'boolean') return v;\n  const s = t(v).toUpperCase();\n  return ['TRUE','YA','1','V','✓'].includes(s) ? true : ['FALSE','TIDAK','0',''].includes(s) ? false : null;\n};\nconst pad = n => String(n).padStart(2, '0');\n// → 'YYYY-MM-DD' | null. Serial Sheets / \"2026-10-01\" / \"01/10/2026\" / \"1 Oktober 2026\"\nconst toISO = v => {\n  if (typeof v === 'number') { if (!(v > 20000 && v < 80000)) return null; const d = new Date(Date.UTC(1899, 11, 30) + Math.floor(v) * 864e5); return d.getUTCFullYear() + '-' + pad(d.getUTCMonth() + 1) + '-' + pad(d.getUTCDate()); }\n  const s = t(v); let m;\n  if ((m = /^(\\d{4})-(\\d{1,2})-(\\d{1,2})/.exec(s))) return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);\n  if ((m = /^(\\d{1,2})[\\/.-](\\d{1,2})[\\/.-](\\d{4})/.exec(s))) return m[3] + '-' + pad(m[2]) + '-' + pad(m[1]);\n  if ((m = /^(\\d{1,2})\\s+([A-Za-z]{3})[A-Za-z]*\\.?\\s+(\\d{4})/.exec(s)) && BLN[m[2].toUpperCase()]) return m[3] + '-' + pad(BLN[m[2].toUpperCase()]) + '-' + pad(m[1]);\n  if (/^\\d+(\\.\\d+)?$/.test(s)) return toISO(Number(s));\n  return null;\n};\nconst canon = v => {\n  if (v === null || v === undefined || v === '') return '';\n  if (typeof v === 'boolean') return v ? 'TRUE' : 'FALSE';\n  if (typeof v === 'number') return Math.abs(v - Math.round(v)) < 1e-9 ? String(Math.round(v)) : v.toFixed(4).replace(/0+$/, '').replace(/\\.$/, '');\n  return String(v).replace(/\\s+/g, ' ').trim();\n};\nconst cyrb53 = (str, seed = 0) => {   // hash 53-bit (sama dengan backfill.py)\n  let h1 = 0xdeadbeef ^ seed, h2 = 0x41c6ce57 ^ seed;\n  for (let i = 0; i < str.length; i++) { const ch = str.charCodeAt(i); h1 = Math.imul(h1 ^ ch, 2654435761); h2 = Math.imul(h2 ^ ch, 1597334677); }\n  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);\n  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);\n  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16).padStart(14, '0');\n};\nconst rowHash = r => cyrb53(HASH_FIELDS.map(f => canon(r[f])).join('|'));\nconst mingguKe = d => (d <= 7 ? 1 : d <= 14 ? 2 : d <= 21 ? 3 : 4);\nconst statusOf = r => (r.verif_finance && r.verif_spv ? 'terverifikasi' : (r.verif_finance || r.verif_spv) ? 'sebagian' : 'belum');\nconst baca = node => {\n  for (const n of [node, 1, 2, 3, 4, 5].map((x, i) => i ? node + x : node)) {\n    try { return $(n).all().map(it => it.json); } catch (e) { /* coba nama berikutnya */ }\n  }\n  return null;\n};\nconst gagal = [], catatan = [];\nconst rowsOf = (node, wajib = true) => {\n  const r = baca(node);\n  if (r === null) { if (wajib) gagal.push(node); return null; }\n  if (r.some(x => x && x.error)) { gagal.push(node); return null; }\n  return r.filter(x => x && Object.keys(x).some(k => k !== 'row_number'));\n};\n\n// ---- parse satu tab kasir (array objek {judul: nilai}) → baris pusat ----\nfunction parseTab(rows, o, sumber, s) {\n  if (!rows || !rows.length) return [];\n  const heads = [];\n  for (const r of rows) for (const k of Object.keys(r)) if (k !== 'row_number' && !heads.includes(k)) heads.push(k);\n  const N = heads.map(norm);\n  const hasRO = N.some(h => h.startsWith('NONTUNAIREALOJOL')), hasOJ = N.some(h => h.startsWith('PENJUALANNONTUNAIOJOL'));\n  const cand = {};\n  heads.forEach((h, i) => { const f = fieldOf(N[i], hasRO, hasOJ); if (f) (cand[f] = cand[f] || []).push(h); });\n  const pick = {};\n  for (const [f, hs] of Object.entries(cand)) {   // judul ganda → kolom yang paling banyak isinya\n    let best = hs[0], bn = -1;\n    for (const h of hs) { const n = rows.filter(r => r[h] !== undefined && r[h] !== null && r[h] !== '').length; if (n > bn) { bn = n; best = h; } }\n    pick[f] = best;\n  }\n  if (!pick.tanggal) { catatan.push(o.nama + ' (' + sumber + '): kolom Tanggal tidak ditemukan'); return []; }\n  const split = !!(pick.qris || pick.ojol);\n  const out = [];\n  for (const r of rows) {\n    let tg = toISO(r[pick.tanggal]);\n    if (!tg) continue;\n    const rec = {};\n    for (const [f, h] of Object.entries(pick)) {\n      if (f === 'tanggal') continue;\n      const v = r[h];\n      if (NUMF.has(f)) rec[f] = num(v);\n      else if (f === 'verif_finance' || f === 'verif_spv') rec[f] = boolv(v);\n      else rec[f] = (v === undefined || v === null || v === '') ? '' : canon(v);\n    }\n    if ([rec.tunai, rec.qris, rec.ojol, rec._nt_gabung].every(v => !v) && !rec.kasir && !rec.total_kaspin) continue;   // tanggal belum diisi\n    // tahun salah ketik (mis. 5026-02-04) → pakai tahun periode bila bulannya cocok\n    const ym = tg.slice(0, 7);\n    if (!s.bulanOK.includes(ym)) {\n      const fix = s.bulanOK.find(b => b.slice(5) === tg.slice(5, 7));\n      if (fix && Math.abs(+tg.slice(0, 4) - +fix.slice(0, 4)) > 0) { catatan.push(o.nama + ' ' + sumber + ' baris ' + r.row_number + ': tahun ' + tg + ' → ' + fix + tg.slice(7)); tg = fix + tg.slice(7); }\n      else { s.luar.push(o.nama + ' ' + tg); continue; }\n    }\n    if (tg > s.tanggal) { s.luar.push(o.nama + ' ' + tg + ' (masa depan)'); continue; }\n    const tunai = rec.tunai || 0;\n    let nt;\n    if (split) nt = (rec.qris || 0) + (rec.ojol || 0);\n    else { nt = rec._nt_gabung || 0; rec.qris = null; rec.ojol = null; if (rec._real_nt_gabung !== undefined && rec._real_nt_gabung !== null) rec.real_qris = rec._real_nt_gabung; }\n    if (!pick.paket) rec.paket = null;\n    const x = { key: o.kode + '|' + tg, tanggal: tg, bulan: tg.slice(0, 7), minggu_ke: mingguKe(+tg.slice(8)), outlet_kode: o.kode, outlet_nama: o.nama };\n    for (const c of COLS) if (c in rec) x[c] = rec[c];\n    x.non_tunai_total = nt; x.omzet = tunai + nt;\n    x.status = statusOf(x);\n    x.ch_offline = ''; x.ch_whatsapp = ''; x.ch_ojol = ''; x.ch_selisih = '';\n    x.sumber = sumber === 'BulanBerlangsung' ? 'live' : 'arsip:' + sumber;\n    x.row_hash = rowHash(x); x.synced_at = s.sekarang; x._row = r.row_number;\n    out.push(x);\n  }\n  return out;\n}\n\n// ---- rekap (dipakai juga untuk backfill: lihat test) ----\n// <rekap>\nfunction rekap(dataRows, targetRows, bulanList, tahunList, sekarang, outlets) {\n  const nm = Object.fromEntries(outlets.map(o => [o.kode, o.nama]));\n  const urut = Object.fromEntries(outlets.map((o, i) => [o.kode, i]));\n  const tgt = {};\n  for (const r of targetRows || []) {\n    const b = t(r.bulan).slice(0, 7), k = t(r.outlet_kode).toUpperCase(); if (!b || !k) continue;\n    const tb = num(r.target_bulanan);\n    const bob = [1, 2, 3, 4].map(i => num(r['bobot_m' + i]));\n    const tm = [1, 2, 3, 4].map((i, j) => { const v = num(r['target_m' + i]); return v !== null ? v : (tb !== null && bob[j] !== null ? Math.round(tb * bob[j]) : null); });\n    tgt[b + '|' + k] = { bulanan: tb, minggu: tm };\n  }\n  const n0 = v => (v === '' || v === null || v === undefined ? null : num(v));\n  const add = (a, v) => (v === null ? a : (a === null ? 0 : a) + v);\n  const blank = () => ({ hari: 0, tglAkhir: '', tunai: null, qris: null, ojol: null, nt: null, omzet: null, ch_offline: null, ch_whatsapp: null, ch_ojol: null, ch_organik: null, ch_ads: null, ch_online: null, ch_live: null, hariAdmin: 0, verif: 0 });\n  const acc = (g, r) => {\n    g.hari++; if (r.tanggal > g.tglAkhir) g.tglAkhir = r.tanggal;\n    g.tunai = add(g.tunai, n0(r.tunai)); g.qris = add(g.qris, n0(r.qris)); g.ojol = add(g.ojol, n0(r.ojol));\n    g.nt = add(g.nt, n0(r.non_tunai_total)); g.omzet = add(g.omzet, n0(r.omzet));\n    for (const c of ['ch_offline','ch_whatsapp','ch_ojol','ch_organik','ch_ads','ch_online','ch_live']) g[c] = add(g[c], n0(r[c]));\n    if (t(r.ch_online_sumber) === 'admin') g.hariAdmin++;\n    if (t(r.status).toLowerCase() === 'terverifikasi') g.verif++;\n  };\n  const dim = b => new Date(Date.UTC(+b.slice(0, 4), +b.slice(5, 7), 0)).getUTCDate();\n  const W = [[1, 7], [8, 14], [15, 21], [22, 31]];\n  const M = {}, B = {}, Y = {};\n  for (const r of dataRows) {\n    const tg = t(r.tanggal), k = t(r.outlet_kode); if (!tg || !k) continue;\n    const b = tg.slice(0, 7), y = tg.slice(0, 4), w = mingguKe(+tg.slice(8));\n    if (bulanList.includes(b)) {\n      acc(M[b + '|M' + w + '|' + k] = M[b + '|M' + w + '|' + k] || blank(), r); acc(M[b + '|M' + w + '|ALL'] = M[b + '|M' + w + '|ALL'] || blank(), r);\n      acc(B[b + '|' + k] = B[b + '|' + k] || blank(), r); acc(B[b + '|ALL'] = B[b + '|ALL'] || blank(), r);\n    }\n    if (tahunList.includes(+y)) { acc(Y[y + '|' + k] = Y[y + '|' + k] || blank(), r); acc(Y[y + '|ALL'] = Y[y + '|ALL'] || blank(), r); }\n  }\n  // outlet yang punya target tapi belum ada data tetap muncul (omzet kosong, bukan 0)\n  for (const key of Object.keys(tgt)) {\n    const [b, k] = key.split('|'); if (!bulanList.includes(b)) continue;\n    B[b + '|' + k] = B[b + '|' + k] || blank(); B[b + '|ALL'] = B[b + '|ALL'] || blank();\n    for (let w = 1; w <= 4; w++) { M[b + '|M' + w + '|' + k] = M[b + '|M' + w + '|' + k] || blank(); M[b + '|M' + w + '|ALL'] = M[b + '|M' + w + '|ALL'] || blank(); }\n  }\n  const sumT = (b, f) => { let s = null; for (const [kk, v] of Object.entries(tgt)) if (kk.startsWith(b + '|') && kk !== b + '|ALL') { const x = f(v); if (x !== null) s = (s || 0) + x; } return s; };\n  const r2 = v => (v === null ? '' : Math.round(v * 10000) / 10000);\n  const v0 = v => (v === null ? '' : v);\n  const base = (g, target) => ({ hari_terisi: g.hari, tgl_terakhir: g.tglAkhir, tunai: v0(g.tunai), qris: v0(g.qris), ojol: v0(g.ojol), non_tunai_total: v0(g.nt), omzet: v0(g.omzet),\n    target: v0(target), achieve: target && g.omzet !== null ? r2(g.omzet / target) : '', selisih: target !== null && g.omzet !== null ? g.omzet - target : '',\n    ch_offline: v0(g.ch_offline), ch_whatsapp: v0(g.ch_whatsapp), ch_ojol: v0(g.ch_ojol), hari_terverifikasi: g.verif, updated_at: sekarang,\n    ch_organik: v0(g.ch_organik), ch_ads: v0(g.ch_ads), ch_online: v0(g.ch_online), hari_online_admin: g.hariAdmin, ch_live: v0(g.ch_live) });\n  const rank = (rows, grp) => {   // peringkat achieve (kalau tidak ada target: omzet) per grup, tanpa baris ALL\n    const gs = {};\n    for (const r of rows) if (r.outlet_kode !== 'ALL') (gs[grp(r)] = gs[grp(r)] || []).push(r);\n    for (const g of Object.values(gs)) {\n      const sc = r => (r.achieve !== '' ? r.achieve : r.omzet !== '' ? r.omzet / 1e12 : -1);\n      g.filter(r => r.omzet !== '').sort((a, b) => sc(b) - sc(a)).forEach((r, i) => { r.rank = i + 1; });\n    }\n    for (const r of rows) if (r.rank === undefined) r.rank = '';\n  };\n  const ord = (a, b) => (a.key < b.key ? -1 : 1);\n  const kSort = k => (k === 'ALL' ? 999 : (urut[k] ?? 500));\n  const mingguan = Object.entries(M).map(([key, g]) => {\n    const [b, w, k] = key.split('|'); const wi = +w.slice(1); const tAkhir = wi === 4 ? dim(b) : W[wi - 1][1];\n    const target = k === 'ALL' ? sumT(b, v => v.minggu[wi - 1]) : (tgt[b + '|' + k] ? tgt[b + '|' + k].minggu[wi - 1] : null);\n    return Object.assign({ key, tahun: +b.slice(0, 4), bulan: b, minggu_ke: wi, tgl_awal: b + '-' + pad(W[wi - 1][0]), tgl_akhir: b + '-' + pad(tAkhir),\n      hari_total: tAkhir - W[wi - 1][0] + 1, outlet_kode: k, outlet_nama: k === 'ALL' ? 'SEMUA OUTLET' : (nm[k] || k) }, base(g, target));\n  }).sort((a, b) => (a.bulan + a.minggu_ke).localeCompare(b.bulan + b.minggu_ke) || kSort(a.outlet_kode) - kSort(b.outlet_kode));\n  rank(mingguan, r => r.bulan + r.minggu_ke);\n  const bulanan = Object.entries(B).map(([key, g]) => {\n    const [b, k] = key.split('|');\n    const target = k === 'ALL' ? sumT(b, v => v.bulanan) : (tgt[b + '|' + k] ? tgt[b + '|' + k].bulanan : null);\n    const x = Object.assign({ key, tahun: +b.slice(0, 4), bulan: b, outlet_kode: k, outlet_nama: k === 'ALL' ? 'SEMUA OUTLET' : (nm[k] || k), hari_total: dim(b) }, base(g, target));\n    x.rata_harian = g.hari && g.omzet !== null ? Math.round(g.omzet / g.hari) : '';\n    return x;\n  }).sort((a, b) => a.bulan.localeCompare(b.bulan) || kSort(a.outlet_kode) - kSort(b.outlet_kode));\n  rank(bulanan, r => r.bulan);\n  const tahunan = Object.entries(Y).map(([key, g]) => {\n    const [y, k] = key.split('|');\n    let target = null; for (const [kk, v] of Object.entries(tgt)) if (kk.startsWith(y + '-') && (k === 'ALL' || kk.endsWith('|' + k)) && v.bulanan !== null) target = (target || 0) + v.bulanan;\n    const x = Object.assign({ key, tahun: +y, outlet_kode: k, outlet_nama: k === 'ALL' ? 'SEMUA OUTLET' : (nm[k] || k) }, base(g, target));\n    x.rata_harian = g.hari && g.omzet !== null ? Math.round(g.omzet / g.hari) : '';\n    return x;\n  }).sort((a, b) => a.tahun - b.tahun || kSort(a.outlet_kode) - kSort(b.outlet_kode));\n  rank(tahunan, r => r.tahun);\n  return { mingguan, bulanan, tahunan };\n}\n// </rekap>\n\n// ---- jalan ----\nconst S = (baca('Siapkan') || [{}])[0] || {};\nconst sekarang = S.sekarang || new Date().toISOString();\nconst bulanOK = [S.bulan].concat(S.sync_bulan_lalu ? [S.bulan_lalu] : []).filter(Boolean);\nconst st = { sekarang, tanggal: S.tanggal || sekarang.slice(0, 10), bulanOK, luar: [] };\nfor (const g of S.gagal || []) gagal.push(g);\nconst kunci = new Set((S.status_terkunci || ['terverifikasi', 'kunci']).map(s => String(s).toLowerCase()));\nconst target = rowsOf('Baca Target') || [];\nconst pusatIni = S.ok === false ? null : rowsOf('Baca Data Tahun Ini');\nconst pakaiLalu = !!S.sync_bulan_lalu && S.tahun_lalu !== S.tahun;\nconst pusatLalu = pakaiLalu ? rowsOf('Baca Data Tahun Lalu') : [];\nconst pusatOK = pusatIni !== null && pusatLalu !== null;\nconst pusat = {};\nfor (const r of [].concat(pusatIni || [], pusatLalu || [])) {\n  const k = t(r.key); if (!k.includes('|')) continue;\n  const [kode, tg] = k.split('|');\n  pusat[k] = Object.assign({}, r, { key: k, outlet_kode: kode, tanggal: tg });   // tanggal dari key (aman walau sel tanggal terbaca sebagai serial)\n}\n// kasir: BulanBerlangsung (live) + arsip bulan lalu (hari 1..N)\nconst baru = {}, dobel = [];\nconst per = {};\nfor (const o of OUTLET) {\n  const live = rowsOf('Baca Kasir ' + o.node);\n  const arsip = S.sync_bulan_lalu ? rowsOf('Baca Arsip ' + o.node) : [];\n  const rows = [].concat(parseTab(arsip, o, S.tab_arsip || 'arsip', st), parseTab(live, o, 'BulanBerlangsung', st));   // arsip dulu → menang\n  per[o.kode] = rows.length;\n  for (const r of rows) {\n    if (baru[r.key]) { if (baru[r.key].row_hash !== r.row_hash) dobel.push(o.nama + ' ' + r.tanggal + ' (' + baru[r.key].sumber + ' dipakai, ' + r.sumber + ' diabaikan)'); continue; }\n    baru[r.key] = r;\n  }\n}\n// ---- channel harian: tab ChannelHarian (kasir) + tab OnlineHarian (admin) ----\nconst CH_KAS = ['ch_offline', 'ch_whatsapp', 'ch_ojol'], CH_ADM = ['ch_organik', 'ch_ads', 'ch_live'], ADM_OPS = ['ch_live'];   // Live Shopping opsional (tab lama)\nconst CHF = ['ch_offline', 'ch_whatsapp', 'ch_ojol', 'ch_selisih', 'ch_organik', 'ch_ads', 'ch_online', 'ch_online_sumber', 'ch_selisih_online', 'ch_live'];\nconst HEAD_KAS = { OFFLINE: 'ch_offline', WHATSAPP: 'ch_whatsapp', WA: 'ch_whatsapp', OJOL: 'ch_ojol' };\nconst HEAD_ADM = { ONLINEORGANIK: 'ch_organik', ORGANIK: 'ch_organik', ONLINEADS: 'ch_ads', ADS: 'ch_ads',\n  LIVESHOPPING: 'ch_live', LIVE: 'ch_live', ONLINELIVESHOPPING: 'ch_live', ONLINELIVE: 'ch_live' };\nconst LABEL = { ch_offline: 'Offline', ch_whatsapp: 'Whatsapp', ch_ojol: 'Ojol', ch_organik: 'Online Organik', ch_ads: 'Online Ads', ch_live: 'Live Shopping' };\nconst thnMuat = new Set([String(S.tahun || st.tanggal.slice(0, 4))].concat(pakaiLalu ? [String(S.tahun_lalu)] : []));\n// → { 'YYYY-MM-DD': {field: angka} | null }  (null = baris ada tapi kosong) ; null kalau judul tidak lengkap\n// opsional = field yang boleh tidak punya kolom (nilai '' / tidak dihitung)\nfunction parseHarian(rows, o, tab, HEAD, fields, opsional = []) {\n  const res = {};\n  if (!rows || !rows.length) return res;\n  const heads = [];\n  for (const r of rows) for (const k of Object.keys(r)) if (k !== 'row_number' && !heads.includes(k)) heads.push(k);\n  let hTg = null; const hF = {};\n  for (const h of heads) { const n = norm(h); if (n === 'TANGGAL' && !hTg) hTg = h; else if (HEAD[n] && !hF[HEAD[n]]) hF[HEAD[n]] = h; }\n  const kurang = fields.filter(f => !hF[f] && !opsional.includes(f)).map(f => LABEL[f]);\n  if (!hTg || kurang.length) { catatan.push(o.nama + ' (' + tab + '): judul tidak lengkap (' + (!hTg ? 'Tanggal ' : '') + kurang.join(', ') + ') → dilewati'); return null; }\n  for (const r of rows) {\n    const tg = toISO(r[hTg]); if (!tg || tg > st.tanggal || !thnMuat.has(tg.slice(0, 4))) continue;\n    const v = Object.fromEntries(fields.map(f => [f, hF[f] ? num(r[hF[f]]) : null]));\n    const isi = Object.values(v).some(x => x !== null);\n    if (isi) for (const f of fields) if (v[f] === null && hF[f]) v[f] = 0;   // kolom opsional yang tidak ada tetap null → ''\n    res[tg] = isi ? v : null;\n  }\n  return res;\n}\nconst chK = {}, chA = {}, gagalOps = [];   // key → {..} | null — hanya tanggal yang ada di tab\nfor (const o of OUTLET) {\n  const rk = rowsOf('Baca Channel ' + o.node);\n  if (rk !== null) { const res = parseHarian(rk, o, 'ChannelHarian', HEAD_KAS, CH_KAS); if (res) for (const [tg, v] of Object.entries(res)) chK[o.kode + '|' + tg] = v; }\n  // OnlineHarian opsional: tab belum dibuat / gagal → tidak masuk `gagal` (ok tetap true), nilai admin di pusat dibiarkan\n  const ra = baca('Baca Online ' + o.node);\n  if (ra === null || ra.some(x => x && x.error)) { gagalOps.push('Baca Online ' + o.node); continue; }\n  const res = parseHarian(ra.filter(x => x && Object.keys(x).some(k => k !== 'row_number')), o, 'OnlineHarian', HEAD_ADM, CH_ADM, ADM_OPS);\n  if (res) for (const [tg, v] of Object.entries(res)) chA[o.kode + '|' + tg] = v;\n}\nif (gagalOps.length) catatan.push('tab OnlineHarian belum ada/gagal dibaca: ' + gagalOps.map(g => g.replace('Baca Online ', '')).join(', '));\n// kolom yang benar-benar ada di file Data Omzet Harian (n8n mengirim semua judul kolom, sel kosong = '')\nconst kolomPusat = new Set(); for (const r of [].concat(pusatIni || [], pusatLalu || [])) for (const k of Object.keys(r)) kolomPusat.add(k);\nconst adaKolom = f => kolomPusat.size === 0 || kolomPusat.has(f);\nconst kolomKurang = CHF.filter(f => !adaKolom(f));\nconst kurangInti = kolomKurang.filter(f => f !== 'ch_live');\nif (kurangInti.length && Object.values(chA).some(Boolean)) catatan.push('kolom ' + kurangInti.join(', ') + ' belum ada di Data Omzet Harian → data OnlineHarian belum tersimpan (tambahkan judul kolomnya)');\nif (kolomKurang.includes('ch_live') && Object.values(chA).some(v => v && v.ch_live)) catatan.push('kolom ch_live belum ada di Data Omzet Harian → angka Live Shopping belum tersimpan terpisah (ch_online sudah termasuk Live). Tambahkan judul ch_live di kolom AN');\nconst nv = v => (v === '' || v === null || v === undefined ? null : num(v));\nconst prevVals = (p, fields) => { if (!p) return null; const v = Object.fromEntries(fields.map(f => [f, nv(p[f])])); return Object.values(v).some(x => x !== null) ? v : null; };\nconst chFor = (key, kaspin, p) => {\n  const kas = key in chK ? chK[key] : prevVals(p, CH_KAS);\n  const adm = key in chA ? chA[key] : prevVals(p, CH_ADM);\n  const o = { ch_offline: '', ch_whatsapp: '', ch_ojol: '', ch_selisih: '', ch_organik: '', ch_ads: '', ch_online: '', ch_online_sumber: '', ch_selisih_online: '', ch_live: '' };\n  if (kas) { Object.assign(o, kas); o.ch_selisih = kaspin === null || kaspin === undefined ? '' : kas.ch_offline + kas.ch_whatsapp + kas.ch_ojol - kaspin; }\n  if (adm) { Object.assign(o, adm); if (o.ch_live === null) o.ch_live = ''; o.ch_online = adm.ch_organik + adm.ch_ads + (adm.ch_live || 0); o.ch_online_sumber = 'admin'; if (kas) o.ch_selisih_online = o.ch_online - kas.ch_whatsapp; }\n  else if (kas) { o.ch_online = kas.ch_whatsapp; o.ch_online_sumber = 'kasir'; }\n  return o;\n};\nconst cv = v => canon(v === '' || v === null || v === undefined ? '' : (num(v) ?? v));\nconst chSama = (p, ch) => CHF.every(f => !adaKolom(f) || cv(p[f]) === cv(ch[f]));   // kolom yang belum ada di sheet tidak dibandingkan\nconst kaspinOf = r => { const k = num(r.total_kaspin); return k !== null ? k : num(r.omzet); };\nconst gabungPusat = (p, ch) => Object.assign({}, p, ch, { synced_at: sekarang });   // isi kas pusat (termasuk row_hash) tetap\nconst tulis = [], konflik = [], bulanCh = new Set(), chTanpaKasir = [];\nlet nBaru = 0, nUbah = 0, nSama = 0, nCh = 0;\nfor (const r of Object.values(baru)) {\n  const p = pusat[r.key];\n  const ch = chFor(r.key, kaspinOf(r), p);\n  Object.assign(r, ch);\n  const chBeda = !!p && !chSama(p, ch);\n  if (p && t(p.row_hash) === r.row_hash) { if (chBeda) { tulis.push(gabungPusat(p, ch)); nCh++; } else nSama++; continue; }\n  if (p && kunci.has(t(p.status).toLowerCase())) {\n    konflik.push(r.outlet_nama + ' ' + r.tanggal + ' (pusat ' + t(p.status) + ', omzet pusat ' + canon(num(p.omzet)) + ' vs kasir ' + canon(r.omzet) + ')');\n    if (chBeda) { tulis.push(gabungPusat(p, ch)); nCh++; }   // channel tetap diperbarui, kas tidak disentuh\n    continue;\n  }\n  if (p) nUbah++; else nBaru++;\n  tulis.push(r);\n}\n// tanggal channel/online yang barisnya sudah tidak ada di tab kasir (mis. bulan lalu) → perbarui ch_* saja\nfor (const key of new Set(Object.keys(chK).concat(Object.keys(chA)))) {\n  if (baru[key]) continue;\n  const p = pusat[key];\n  if (!p) { if (chK[key] || chA[key]) chTanpaKasir.push(key); continue; }\n  const ch = chFor(key, kaspinOf(p), p);\n  if (chSama(p, ch)) continue;\n  tulis.push(gabungPusat(p, ch)); nCh++; bulanCh.add(key.split('|')[1].slice(0, 7));\n}\nif (nCh) catatan.push('channel diperbarui: ' + nCh + ' baris');\nif (chTanpaKasir.length) catatan.push('channel/online terisi tapi belum ada closing kasir: ' + chTanpaKasir.slice(0, 10).join(', ') + (chTanpaKasir.length > 10 ? ' …(+' + (chTanpaKasir.length - 10) + ')' : ''));\nconst out = c => Object.fromEntries(COLS.map(k => [k, c[k] === null || c[k] === undefined ? '' : c[k]]));\nconst tulisRows = pusatOK ? tulis.map(out) : [];\nif (!pusatOK) catatan.push('sheet pusat gagal dibaca → tidak ada data yang ditulis');\n// gabungan untuk rekap = pusat + yang ditulis\nconst gab = Object.assign({}, pusat); for (const r of tulisRows) gab[r.key] = r;\nconst bulanRekap = [...new Set(bulanOK.concat([...bulanCh]))].sort();\nconst { mingguan, bulanan, tahunan } = rekap(Object.values(gab), target, bulanRekap, [...new Set(bulanRekap.map(b => +b.slice(0, 4)))], sekarang, OUTLET);\nif (st.luar.length) catatan.push('baris di luar periode diabaikan: ' + st.luar.slice(0, 10).join(', ') + (st.luar.length > 10 ? ' …(+' + (st.luar.length - 10) + ')' : ''));\nif (dobel.length) catatan.push('tanggal ganda: ' + dobel.slice(0, 10).join('; '));\nconst jam = +(sekarang.slice(11, 13));\nconst laporKonflik = konflik.length > 0 && jam === S.jam_lapor_konflik && +(sekarang.slice(14, 16)) < 30;\nconst laporOpsional = gagalOps.length > 0 && jam === S.jam_lapor_konflik && +(sekarang.slice(14, 16)) < 30;   // tab OnlineHarian belum ada → lapor sekali sehari\nconst adaLog = tulisRows.length > 0 || gagal.length > 0 || laporKonflik || laporOpsional || (!pusatOK);\nconst log = adaLog ? [{ waktu: sekarang, periode: bulanOK.join(','), baris_kasir: Object.keys(baru).length, baru: pusatOK ? nBaru : 0, berubah: pusatOK ? nUbah : 0, sama: nSama,\n  terkunci_beda: konflik.length, detail_terkunci: laporKonflik ? konflik.slice(0, 30).join('; ') : '', gagal: gagal.concat(gagalOps.map(g => g + ' (opsional)')).join(', '), catatan: catatan.join(' | ').slice(0, 45000),\n  ditulis: tulisRows.map(r => r.key).slice(0, 60).join(',') }] : [];\nconst thIni = String(S.tahun || '');\nreturn [{ json: {\n  ok: pusatOK && gagal.length === 0,\n  tulis_ini: tulisRows.filter(r => r.tanggal.slice(0, 4) === thIni),\n  tulis_lalu: tulisRows.filter(r => r.tanggal.slice(0, 4) !== thIni),\n  rekap_mingguan: pusatOK ? mingguan : [], rekap_bulanan: pusatOK ? bulanan : [], rekap_tahunan: pusatOK ? tahunan : [],\n  log, ringkas: { baris_kasir: Object.keys(baru).length, per_outlet: per, baru: nBaru, berubah: nUbah, sama: nSama, channel_diperbarui: nCh, hari_channel: Object.values(chK).filter(Boolean).length, hari_online_admin: Object.values(chA).filter(Boolean).length, gagal_opsional: gagalOps, kolom_kurang: kolomKurang, terkunci_beda: konflik.length, konflik, gagal, catatan } } }];\n"
+      },
+      "id": "12e31df7-a9d0-40cc-a9ce-b4777fb6e7f8",
+      "name": "Hitung Sinkron",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4620,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil `tulis_ini` dari Hitung Sinkron → 1 item per baris (kosong = node tulis tidak jalan)\nreturn (($input.first().json.tulis_ini) || []).map(json => ({ json }));"
+      },
+      "id": "4988982e-b935-4b5e-8e3a-9dd8d4719805",
+      "name": "Ambil Data Tahun Ini",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4860,
+        -160
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.doc_ini }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_data }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "key"
+          ],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "0924be46-83d1-4c2e-8d98-e3e77bb8265b",
+      "name": "Tulis Data Tahun Ini",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5100,
+        -160
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil `tulis_lalu` dari Hitung Sinkron → 1 item per baris (kosong = node tulis tidak jalan)\nreturn (($input.first().json.tulis_lalu) || []).map(json => ({ json }));"
+      },
+      "id": "1ed15528-6aad-4b8e-9d18-faf11c304a4c",
+      "name": "Ambil Data Tahun Lalu",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4860,
+        10
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.doc_lalu }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "={{ $('Siapkan').first().json.tab_data }}",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "key"
+          ],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "8f5b3184-a19a-444a-addc-2b4df4962e53",
+      "name": "Tulis Data Tahun Lalu",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5100,
+        10
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil `rekap_mingguan` dari Hitung Sinkron → 1 item per baris (kosong = node tulis tidak jalan)\nreturn (($input.first().json.rekap_mingguan) || []).map(json => ({ json }));"
+      },
+      "id": "dea30986-ddb2-41e8-8f9c-2d82aaf35f8e",
+      "name": "Ambil Rekap Mingguan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4860,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "rekap_mingguan",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "key"
+          ],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "e01ea30f-111a-467f-a201-b4c4e2f48cb5",
+      "name": "Tulis Rekap Mingguan",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5100,
+        180
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil `rekap_bulanan` dari Hitung Sinkron → 1 item per baris (kosong = node tulis tidak jalan)\nreturn (($input.first().json.rekap_bulanan) || []).map(json => ({ json }));"
+      },
+      "id": "b6686cd3-058d-40f0-ad6c-3d9e79ba650e",
+      "name": "Ambil Rekap Bulanan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4860,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "rekap_bulanan",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "key"
+          ],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "7beb64ce-9cec-4f34-88db-fa2098b737fa",
+      "name": "Tulis Rekap Bulanan",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5100,
+        350
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil `rekap_tahunan` dari Hitung Sinkron → 1 item per baris (kosong = node tulis tidak jalan)\nreturn (($input.first().json.rekap_tahunan) || []).map(json => ({ json }));"
+      },
+      "id": "e1fd6016-c7f5-489c-8c5e-e27125e8e064",
+      "name": "Ambil Rekap Tahunan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4860,
+        520
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "rekap_tahunan",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "key"
+          ],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "cb3efacf-7ec4-42d7-b346-d961062fe83d",
+      "name": "Tulis Rekap Tahunan",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5100,
+        520
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Ambil `log` dari Hitung Sinkron → 1 item per baris (kosong = node tulis tidak jalan)\nreturn (($input.first().json.log) || []).map(json => ({ json }));"
+      },
+      "id": "a05f86a3-71ef-489f-8caf-7f86bfceb874",
+      "name": "Ambil Log",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4860,
+        690
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "13cjUgqJ059e6HOaQSbJlRNu5I6io4og7KVWuuPX0Bt4",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "log",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "ignoreIt"
+        }
+      },
+      "id": "4c247f20-2d44-411f-9115-eaf26d74bc9b",
+      "name": "Tulis Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5100,
+        690
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Tiap 30 Menit": {
+      "main": [
+        [
+          {
+            "node": "Baca Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Config": {
+      "main": [
+        [
+          {
+            "node": "Siapkan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Siapkan": {
+      "main": [
+        [
+          {
+            "node": "Baca Target",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Target": {
+      "main": [
+        [
+          {
+            "node": "Baca Data Tahun Ini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Data Tahun Ini": {
+      "main": [
+        [
+          {
+            "node": "Baca Kasir Sungai Poso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Kasir Sungai Poso": {
+      "main": [
+        [
+          {
+            "node": "Baca Kasir Gowa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Kasir Gowa": {
+      "main": [
+        [
+          {
+            "node": "Baca Kasir Sudiang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Kasir Sudiang": {
+      "main": [
+        [
+          {
+            "node": "Baca Kasir Barombong",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Kasir Barombong": {
+      "main": [
+        [
+          {
+            "node": "Baca Kasir Limbung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Kasir Limbung": {
+      "main": [
+        [
+          {
+            "node": "Baca Kasir Pare-Pare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Kasir Pare-Pare": {
+      "main": [
+        [
+          {
+            "node": "Baca Kasir Tamalate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Kasir Tamalate": {
+      "main": [
+        [
+          {
+            "node": "Baca Channel Sungai Poso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Arsip Sungai Poso": {
+      "main": [
+        [
+          {
+            "node": "Baca Arsip Gowa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Arsip Gowa": {
+      "main": [
+        [
+          {
+            "node": "Baca Arsip Sudiang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Arsip Sudiang": {
+      "main": [
+        [
+          {
+            "node": "Baca Arsip Barombong",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Arsip Barombong": {
+      "main": [
+        [
+          {
+            "node": "Baca Arsip Limbung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Arsip Limbung": {
+      "main": [
+        [
+          {
+            "node": "Baca Arsip Pare-Pare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Arsip Pare-Pare": {
+      "main": [
+        [
+          {
+            "node": "Baca Arsip Tamalate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Arsip Tamalate": {
+      "main": [
+        [
+          {
+            "node": "Baca Data Tahun Lalu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sinkron Bulan Lalu?": {
+      "main": [
+        [
+          {
+            "node": "Baca Arsip Sungai Poso",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Hitung Sinkron",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Data Tahun Lalu": {
+      "main": [
+        [
+          {
+            "node": "Hitung Sinkron",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Data Tahun Ini": {
+      "main": [
+        [
+          {
+            "node": "Tulis Data Tahun Ini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Data Tahun Lalu": {
+      "main": [
+        [
+          {
+            "node": "Tulis Data Tahun Lalu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Rekap Mingguan": {
+      "main": [
+        [
+          {
+            "node": "Tulis Rekap Mingguan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Rekap Bulanan": {
+      "main": [
+        [
+          {
+            "node": "Tulis Rekap Bulanan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Rekap Tahunan": {
+      "main": [
+        [
+          {
+            "node": "Tulis Rekap Tahunan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ambil Log": {
+      "main": [
+        [
+          {
+            "node": "Tulis Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hitung Sinkron": {
+      "main": [
+        [
+          {
+            "node": "Ambil Data Tahun Ini",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ambil Data Tahun Lalu",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ambil Rekap Mingguan",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ambil Rekap Bulanan",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ambil Rekap Tahunan",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Ambil Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Channel Sungai Poso": {
+      "main": [
+        [
+          {
+            "node": "Baca Channel Gowa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Channel Gowa": {
+      "main": [
+        [
+          {
+            "node": "Baca Channel Sudiang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Channel Sudiang": {
+      "main": [
+        [
+          {
+            "node": "Baca Channel Barombong",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Channel Barombong": {
+      "main": [
+        [
+          {
+            "node": "Baca Channel Limbung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Channel Limbung": {
+      "main": [
+        [
+          {
+            "node": "Baca Channel Pare-Pare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Channel Pare-Pare": {
+      "main": [
+        [
+          {
+            "node": "Baca Channel Tamalate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Channel Tamalate": {
+      "main": [
+        [
+          {
+            "node": "Baca Online Sungai Poso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Online Sungai Poso": {
+      "main": [
+        [
+          {
+            "node": "Baca Online Gowa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Online Gowa": {
+      "main": [
+        [
+          {
+            "node": "Baca Online Sudiang",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Online Sudiang": {
+      "main": [
+        [
+          {
+            "node": "Baca Online Barombong",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Online Barombong": {
+      "main": [
+        [
+          {
+            "node": "Baca Online Limbung",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Online Limbung": {
+      "main": [
+        [
+          {
+            "node": "Baca Online Pare-Pare",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Online Pare-Pare": {
+      "main": [
+        [
+          {
+            "node": "Baca Online Tamalate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Online Tamalate": {
+      "main": [
+        [
+          {
+            "node": "Sinkron Bulan Lalu?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Makassar"
+  },
+  "pinData": {}
+}

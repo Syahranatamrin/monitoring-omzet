@@ -1,0 +1,253 @@
+{
+  "name": "QC - Monitoring Channel CONTROL DASHBOARD (GET) v2",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## QC - Monitoring Channel CONTROL DASHBOARD (GET monitoring-channel-controldash?tahun=2026)\nMembaca tab CONTROL DASHBOARD (B6:G14, blok CHANNEL MARKETING) di file Target Control tiap bulan. Hanya MEMBACA.\nTAMBAH BULAN: buka node \"Daftar File\", tambah baris 'YYYY-MM': '<id file>', simpan. File harus dibagikan (Viewer) ke service account:\nsyahrana@ai-automation-462913.iam.gserviceaccount.com\nAlur: Daftar File → Loop Bulan (1 file per putaran) → Baca → Kemas Bulan → kembali ke Loop; selesai → Susun Channel → Respon (versi 2).\nFile yang belum dibagikan → bulan itu ok:false + pesan di `gagal`, bulan lain tetap tampil.",
+        "height": 260,
+        "width": 640
+      },
+      "id": "f9d0dca6-8bab-4fe7-8fc2-f86a4c0db387",
+      "name": "Catatan",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -40,
+        -200
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "monitoring-channel-controldash",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "7c67e461-3756-4ade-b023-f3c21345d6b4",
+      "name": "Webhook Channel",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        160
+      ],
+      "webhookId": "9e932e4b-926a-4b1a-9b96-61208a6ecbe7"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Daftar file Target Control per bulan. TAMBAH BULAN BARU: tambahkan 1 baris 'YYYY-MM': '<id file Google Sheet>',\n// lalu bagikan file itu (Viewer) ke service account n8n. Tab yang dibaca: CONTROL DASHBOARD, blok CHANNEL MARKETING (B6:G14).\nconst FILES = {\n  '2026-07': '1PVm_RMx_zzM-g6frS9jQcSMLJuJ5jFRbs-ECid791lQ',\n  '2026-08': '1g367ggwGkiy84iOcsPRg2qlvzEsufb5XS7O38Fu-G9M',\n  '2026-09': '1_m7Q0s3tuqpAv2esxbYeyvBhRAMdc9A-s674VBn4lhk',\n  '2026-10': '1UoznzWqXZtCuSJZEbB7QKxombEumuKK80yCO1YZGGAQ',\n  '2026-11': '1wnfe5MmUnVKwdk4OLdGJOt8sHyRlCJlELEpvkK7DBBM',\n};\nconst q = ($('Webhook Channel').first().json.query) || {};\nconst now = DateTime.now().setZone('Asia/Makassar');\nconst tahun = /^\\d{4}$/.test(String(q.tahun || '')) ? String(q.tahun) : String(now.year);\nconst list = Object.keys(FILES).sort().filter(b => b.startsWith(tahun + '-') && FILES[b]);\nif (!list.length) return [{ json: { bulan: null, tahun, file: 'TIDAK-ADA', kosong: true } }];\nreturn list.map(bulan => ({ json: { bulan, tahun, file: FILES[bulan] } }));\n"
+      },
+      "id": "95e07e46-1280-4811-8637-ed88954b9d71",
+      "name": "Daftar File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "1319c787-1777-43f8-bb21-af3be8e14355",
+      "name": "Loop Bulan",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        440,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json.file }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "CONTROL DASHBOARD",
+          "mode": "name"
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "UNFORMATTED_VALUE",
+              "date": "SERIAL_NUMBER"
+            }
+          },
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "B6:G14"
+            }
+          }
+        }
+      },
+      "id": "00c7893c-5810-4f7c-8fc2-a8f9db3462c5",
+      "name": "Baca Control Dashboard",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        440,
+        300
+      ],
+      "credentials": {
+        "googleApi": {
+          "id": "9PAG5clr6jslUdIb",
+          "name": "Google Service Account account"
+        }
+      },
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Satu putaran loop = satu file/bulan. Bungkus semua baris CONTROL DASHBOARD file ini jadi 1 item {bulan, file, rows|error}.\n// (Versi 1 memetakan baris ke bulan lewat pairedItem → node Sheets hanya membaca file pertama & baris ke-i jatuh ke bulan ke-i. Sekarang tidak dipakai.)\nconst f = $('Loop Bulan').first().json;\nif (f.kosong) return [{ json: f }];\nconst its = $input.all(), err = its.find(i => i.json && i.json.error);\nconst rows = its.map(i => i.json).filter(j => j && Object.keys(j).length);\nreturn [{ json: { bulan: f.bulan, tahun: f.tahun, file: f.file, error: err ? String(err.json.error.message || err.json.error) : (rows.length ? undefined : 'tab CONTROL DASHBOARD kosong / tidak terbaca'), rows: err ? [] : rows } }];\n"
+      },
+      "id": "2ba835d0-b222-46f9-8a78-1b1b34ae7050",
+      "name": "Kemas Bulan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Susun respons: per bulan → channel {target, realisasi, achieve, kontribusi, selisih} dari CONTROL DASHBOARD (angka apa adanya dari sheet).\nfunction susun(files, rowsPerFile, tahun, sekarang) {\n  const num = v => { if (v === null || v === undefined || v === '') return null; if (typeof v === 'number') return v;\n    const s = String(v).replace(/[^0-9,.\\-%]/g, ''); if (!s) return null; const pct = s.endsWith('%'); let x = s.replace('%', '');\n    if (/,\\d{1,2}$/.test(x)) x = x.replace(/\\./g, '').replace(',', '.'); else x = x.replace(/[.,](?=\\d{3}(\\D|$))/g, '');\n    const n = parseFloat(x); return isFinite(n) ? (pct ? n / 100 : n) : null; };\n  const kunci = (row, re) => Object.keys(row).find(k => re.test(String(k).toUpperCase()));\n  const bulan = files.map((f, i) => {\n    const rows = rowsPerFile[i];\n    if (!rows || rows.error) return { bulan: f.bulan, file: f.file, ok: false, error: rows && rows.error ? String(rows.error) : 'tidak terbaca' };\n    const r0 = rows[0] || {};\n    const kC = kunci(r0, /CHANNEL/) || Object.keys(r0)[0], kT = kunci(r0, /TARGET/), kR = kunci(r0, /REALISASI/), kA = kunci(r0, /ACHIEVE/), kK = kunci(r0, /KONTRIBUSI/), kS = kunci(r0, /SELISIH/);\n    if (!kT || !kR) return { bulan: f.bulan, file: f.file, ok: false, error: 'kolom TARGET PER-CHANNEL / REALISASI tidak ditemukan di CONTROL DASHBOARD B6:G14' };\n    const channel = [];\n    for (const r of rows) {\n      const c = String(r[kC] ?? '').trim().toUpperCase().replace(/\\s+/g, ' ');\n      if (!c || /^UNIT BISNIS/.test(c)) { if (channel.length) break; else continue; }\n      const t = num(r[kT]) || 0, re = num(r[kR]) || 0;\n      channel.push({ channel: c, target: t, realisasi: re, achieve: kA ? num(r[kA]) : (t ? re / t : null), kontribusi: kK ? num(r[kK]) : null, selisih: kS ? num(r[kS]) : re - t });\n    }\n    return { bulan: f.bulan, file: f.file, ok: channel.length > 0, error: channel.length ? undefined : 'baris channel kosong',\n      target: channel.reduce((a, c) => a + c.target, 0), realisasi: channel.reduce((a, c) => a + c.realisasi, 0), channel };\n  });\n  return { ok: bulan.some(b => b.ok), versi: 2, tahun: +tahun, sumber: 'CONTROL DASHBOARD Target Control', bulan, gagal: bulan.filter(b => !b.ok).map(b => b.bulan + ': ' + b.error), generated_at: sekarang };\n}\nif (typeof module !== 'undefined') module.exports = { susun };\nif (typeof $ === 'function') {\n  const items = $input.all().map(it => it.json);\n  if (!items.length || (items.length === 1 && items[0].kosong)) { const th = items[0] ? items[0].tahun : ''; return [{ json: { ok: false, versi: 2, tahun: +th, message: 'Belum ada file Target Control untuk tahun ' + th + ' (isi daftar di node Daftar File)', bulan: [] } }]; }\n  items.sort((a, b) => String(a.bulan).localeCompare(String(b.bulan)));\n  const out = susun(items, items.map(x => x.error ? { error: x.error } : x.rows), items[0].tahun, DateTime.now().setZone('Asia/Makassar').toISO({ suppressMilliseconds: true }));\n  out.versi = 2; return [{ json: out }];\n}\n"
+      },
+      "id": "1f9dd780-a2f5-48ea-ab2a-cd1dc647af8c",
+      "name": "Susun Channel",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Access-Control-Allow-Origin",
+                "value": "*"
+              },
+              {
+                "name": "Access-Control-Allow-Headers",
+                "value": "Content-Type"
+              },
+              {
+                "name": "Access-Control-Allow-Methods",
+                "value": "GET, OPTIONS"
+              },
+              {
+                "name": "Cache-Control",
+                "value": "no-store"
+              }
+            ]
+          }
+        }
+      },
+      "id": "df5a20db-a1ff-49ed-9898-776e8d51ded6",
+      "name": "Respon Channel",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        160
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Channel": {
+      "main": [
+        [
+          {
+            "node": "Daftar File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daftar File": {
+      "main": [
+        [
+          {
+            "node": "Loop Bulan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Bulan": {
+      "main": [
+        [
+          {
+            "node": "Susun Channel",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Baca Control Dashboard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Baca Control Dashboard": {
+      "main": [
+        [
+          {
+            "node": "Kemas Bulan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kemas Bulan": {
+      "main": [
+        [
+          {
+            "node": "Loop Bulan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Susun Channel": {
+      "main": [
+        [
+          {
+            "node": "Respon Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Makassar"
+  },
+  "pinData": {}
+}

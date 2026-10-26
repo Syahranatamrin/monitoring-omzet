@@ -1,0 +1,436 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitoring Omzet Outlet – Pizza Nyantuy</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+/* Gaya mengikuti dashboard Stampcard (referral-pizza-nyantuy): coklat #7a3e12, oranye #c8691c, krem #f5f1ea */
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,Segoe UI,Roboto,sans-serif;background:#f5f1ea;color:#2b2118}
+header{background:#7a3e12;color:#fff;padding:12px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}header h1{font-size:18px;margin:0}
+.sub{background:#8f4c1a;padding:8px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.snav button{display:inline-block;border:0;border-radius:8px;padding:8px 12px;cursor:pointer;background:#fff;color:#7a3e12;font:600 13.3333px Arial,sans-serif}.snav button.on{background:#f2b46b}
+.btn{border:0;border-radius:8px;padding:8px 12px;cursor:pointer;background:#fff;color:#7a3e12;font-weight:600}.btn.s{padding:4px 8px;font-size:12px}
+main{padding:14px;max-width:1200px;margin:auto}
+.banner{padding:10px 14px;border-radius:8px;margin-bottom:10px;display:none;font-size:14px}.banner.err{background:#fde2e1;color:#8a1c1c;display:block}.banner.ok{background:#e3f4e4;color:#1b5e20;display:block}.banner.warn{background:#fff4d6;color:#7a5600;display:block}
+.ilus{display:none;background:#2b2118;color:#fff;text-align:center;font-size:13px;font-weight:600;padding:7px;letter-spacing:.2px}.ilus.on{display:block}
+.filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;align-items:center}input,select{padding:8px;border:1px solid #d6c8b8;border-radius:8px;font:inherit;background:#fff}
+.seg{display:inline-flex;border:1px solid #d6c8b8;border-radius:8px;overflow:hidden;background:#fff}.seg button{border:0;background:#fff;padding:8px 12px;cursor:pointer;font-weight:600;color:#7a3e12}.seg button.on{background:#c8691c;color:#fff}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.kpis.k4{grid-template-columns:repeat(4,1fr);margin-bottom:10px}@media(max-width:640px){.kpis,.kpis.k4{grid-template-columns:1fr 1fr}}
+.card{background:#fff;border-radius:12px;padding:12px;box-shadow:0 1px 3px #0001;min-width:0}.card h4{margin:0 0 8px}
+.kpi b{display:block;font-size:22px;color:#7a3e12}.kpi span{font-size:13px;color:#6b5a4a}.kpi small{display:block;font-size:11px;color:#9a8a7a;margin-top:2px}.kpi b.neg{color:#b71c1c}.kpi b.pos{color:#1b5e20}
+.charts{display:grid;gap:10px;margin:10px 0}.charts>*{min-width:0}.charts.c2{grid-template-columns:3fr 2fr}.charts.c3{grid-template-columns:1fr 1fr}.charts.c4{grid-template-columns:1fr 1.25fr}@media(max-width:800px){.charts.c2,.charts.c3,.charts.c4{grid-template-columns:1fr}}
+.cw{position:relative;height:280px}.cnote{display:block;font-size:11px;color:#9a8a7a;margin:-4px 0 4px}.nochart{display:flex;align-items:center;justify-content:center;height:100%;color:#9a8a7a;font-size:13px;text-align:center}
+.tw{overflow:auto;max-width:100%}table{width:100%;border-collapse:collapse;font-size:13px;background:#fff}th,td{padding:7px;border-bottom:1px solid #eee;text-align:left;white-space:nowrap}
+th{background:#faf4ec;position:sticky;top:0;cursor:pointer;user-select:none;font-size:12px;white-space:normal;vertical-align:bottom;min-width:84px}th.sl{min-width:0}th.r,td.r{text-align:right}th .ar{color:#c8691c}
+td.sl,th.sl{position:sticky;left:0;background:#fff;z-index:1}th.sl{background:#faf4ec;z-index:2}td.sl2,th.sl2{position:sticky;left:38px;background:#fff;z-index:1}th.sl2{background:#faf4ec;z-index:2}
+tfoot td{font-weight:700;background:#faf4ec;border-top:2px solid #e8d5bd}tfoot td.sl,tfoot td.sl2{background:#faf4ec}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700}.st-g{background:#e3f4e4;color:#1b5e20}.st-y{background:#fff0c2;color:#7a5600}.st-r{background:#fde2e1;color:#b71c1c}.st-n{background:#eee;color:#666;font-weight:600}
+.neg{color:#b71c1c;font-weight:600}.pos{color:#1b5e20;font-weight:600}.muted{color:#9a8a7a}
+.rk{display:inline-flex;width:24px;height:24px;border-radius:7px;align-items:center;justify-content:center;background:#faf4ec;color:#7a3e12;font-weight:700}.rk.t1{background:#c8691c;color:#fff}.rk.t2{background:#e08a3c;color:#fff}.rk.t3{background:#f2b46b;color:#7a3e12}
+.bar{height:5px;background:#f0e6da;border-radius:3px;margin-top:3px;min-width:70px}.bar i{display:block;height:100%;border-radius:3px;background:#c8691c}
+.foot{font-size:12px;color:#6b5a4a;line-height:1.55;margin-top:10px}.foot code{background:#faf4ec;padding:1px 5px;border-radius:4px;font-size:11.5px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:#6b5a4a;margin:6px 0}.hide{display:none!important}small{color:#6b5a4a}
+.wk td.bd,#t-ch .bd{color:#9a8a7a;font-style:italic}
+.wk td small{display:block;line-height:1.35}.wk td.r{vertical-align:top}.stk{display:flex;height:16px;border-radius:4px;overflow:hidden;min-width:140px;background:#f0e6da}.stk i{display:block;height:100%}
+#tCh td small,#tBrand td small{display:block}#tCh td,#tBrand td{vertical-align:top}#tBrand td{white-space:normal}.cov{font-size:11px;color:#9a8a7a}.note{font-size:12.5px;line-height:1.5;color:#5c4a3a;background:#faf4ec;border-left:3px solid #c8691c;padding:8px 10px;border-radius:6px;margin:6px 0 10px}
+.banner.src{display:inline-block;padding:3px 10px;font-size:12px;background:#f4ece3;color:#6b5a4a;border:1px solid #e3d3c2;border-radius:999px}
+</style></head><body>
+<header><h1>📈 Monitoring Omzet Outlet</h1><small id="upd" style="color:#f2d5b8"></small></header>
+<div class="sub"><div class="snav" id="tabs"><button data-t="dash" class="on">Dashboard</button> <button data-t="minggu">Per Minggu</button> <button data-t="rank">Ranking</button> <button data-t="ch">Channel</button></div><button class="btn s" id="btnRef">🔄 Refresh</button></div>
+<div id="ilus" class="ilus">⚠️ Data contoh · Data ilustrasi, bukan data aktual Pizza Nyantuy</div>
+<main>
+<div id="bMain" class="banner"></div><div id="bInfo" class="banner"></div><div id="bCh" class="banner"></div>
+<div class="filters"><b style="margin-right:4px">🍕 Omzet Bulanan</b>
+ <select id="fBulan" aria-label="Bulan"></select>
+ <span class="seg" id="fMinggu" role="group" aria-label="Minggu pelaporan"><button data-v="1">Minggu 1</button><button data-v="2">Minggu 2</button><button data-v="3">Minggu 3</button><button data-v="4">Minggu 4</button></span>
+</div>
+<section id="t-dash">
+ <div class="kpis" id="kpi"></div>
+ <div class="charts c2"><div class="card"><h4>Realisasi vs Target per Outlet</h4><small class="cnote" id="nOut"></small><div class="cw" data-c="cOut"><canvas id="cOut"></canvas></div></div>
+  <div class="card"><h4>Kontribusi Realisasi per Outlet</h4><small class="cnote">porsi omzet kumulatif tiap outlet</small><div class="cw" data-c="cDon"><canvas id="cDon"></canvas></div></div></div>
+ <div class="charts c3"><div class="card"><h4>% Capaian terhadap Target Progres</h4><small class="cnote">garis putus = 100% · hijau ≥100% · kuning 80–99% · merah &lt;80%</small><div class="cw" data-c="cPct"><canvas id="cPct"></canvas></div></div>
+  <div class="card"><h4>Realisasi Mingguan vs Target Minggu</h4><small class="cnote">total semua outlet per minggu</small><div class="cw" data-c="cWk"><canvas id="cWk"></canvas></div></div></div>
+ <div class="card"><h4>Rekap per Outlet</h4>
+  <div class="filters"><input id="q" type="search" placeholder="🔍 Cari outlet" style="flex:1;min-width:160px"><small id="rkNote"></small></div>
+  <div class="legend"><span><span class="tag st-g">≥100%</span> sesuai/di atas progres</span><span><span class="tag st-y">80–99%</span> waspada</span><span><span class="tag st-r">&lt;80%</span> tertinggal</span><span><span class="tag st-n">belum diisi</span> realisasi kosong</span></div>
+  <div class="tw"><table id="tbl"><thead></thead><tbody></tbody><tfoot></tfoot></table></div>
+  <div class="foot" id="foot"></div></div>
+</section>
+<section id="t-minggu" class="hide">
+ <div class="card"><h4>Target vs Omzet per Minggu</h4><small class="cnote">per minggu (bukan kumulatif) · M1 tgl 1–7 · M2 8–14 · M3 15–21 · M4 22–akhir · minggu berjalan: target diprorata hari · kosong = belum diisi</small><div class="tw"><table class="wk" id="tWk"></table></div></div>
+ <div class="card" style="margin-top:10px"><h4>Kumulatif: Target Progres vs Omzet</h4><small class="cnote" id="nKum"></small><div class="tw"><table class="wk" id="tKum"></table></div></div>
+</section>
+<section id="t-rank" class="hide">
+ <div class="filters"><span class="seg" id="fRank" role="group" aria-label="Periode ranking"><button data-v="1">Minggu 1</button><button data-v="2">Minggu 2</button><button data-v="3">Minggu 3</button><button data-v="4">Minggu 4</button><button data-v="akum">Akumulasi Bulan</button></span><small id="nRank"></small></div>
+ <div class="charts c4"><div class="card"><h4 id="hRank">Ranking Omzet</h4><small class="cnote">omzet tertinggi = peringkat 1 · warna = % capaian thd target (hijau ≥100%, kuning 80–99%, merah &lt;80%)</small><div class="cw" data-c="cRank"><canvas id="cRank"></canvas></div></div>
+  <div class="card"><h4>Tabel Ranking</h4><div class="tw"><table id="tRank"></table></div></div></div>
+</section>
+<section id="t-ch" class="hide">
+ <div id="chNone" class="card hide"><h4>Channel</h4><p class="muted" id="chNoneTxt"></p></div>
+ <div id="chBox">
+ <div class="note" id="chNote"></div>
+ <div class="kpis k4" id="chKpi"></div>
+ <div class="card"><h4>Target Channel Brand vs Realisasi</h4><small class="cnote" id="nBrand"></small><div class="tw"><table id="tBrand"></table></div></div>
+ <div class="charts"><div class="card"><h4>Porsi Channel per Outlet</h4><small class="cnote">Offline &amp; Ojol dari ChannelHarian kasir · Online Organik, Ads &amp; Live Shopping dari OnlineHarian admin · Online belum dipisah = WhatsApp kasir di hari admin belum isi</small><div class="cw" data-c="cCh"><canvas id="cCh"></canvas></div></div></div>
+ <div class="card"><h4>Channel per Outlet</h4><small class="cnote">hari kasir = ChannelHarian diisi · hari admin = OnlineHarian diisi (dari hari ber-omzet) · selisih kasir = total channel kasir − TOTAL KASPIN · selisih online = Organik+Ads+Live admin − WhatsApp kasir</small><div class="tw"><table id="tCh"></table></div></div>
+ </div>
+</section>
+</main>
+<script>
+/* ===== Konfigurasi =====
+   N8N_URL = base URL webhook n8n (Production URL, tanpa garis miring di akhir).
+     Dropdown bulan / ?bulan=YYYY-MM (juga okt|nov), default bulan berjalan WITA. ?tab=dash|minggu|rank|ch membuka tab langsung.
+     1) GET {N8N_URL}/monitoring-omzet-pusat?bulan=YYYY-MM (flow PUSAT) → {ok, bulan, minggu, minggu_berjalan, bobot_minggu, outlet:[{nama, target_bulanan, target_per_minggu, realisasi_per_minggu}], ranking, channel, channel_brand}
+     2) gagal/kosong → cadangan CADANGAN[bulan] (Okt: /monitoring-omzet-okt?sheet=okt · Nov: /monitoring-omzet), format sama tanpa channel.
+   Buka dengan ?demo=1 untuk data contoh. Bila server tak terjangkau, halaman otomatis memakai data contoh (berlabel jelas). */
+const N8N_URL = 'https://n8n.srv1123014.hstgr.cloud/webhook';
+// Sumber utama: flow PUSAT (Sheet Pusat: Rekap Omzet Master + Data Omzet Harian), semua bulan: GET /monitoring-omzet-pusat?bulan=YYYY-MM
+//   → format sama + ranking, channel{outlet,total}, channel_brand{target,banding}.
+// Cadangan bila pusat gagal/kosong: flow lama per bulan (Target Control + Penutupan Kasir). Tambah bulan cadangan di CADANGAN.
+const PUSAT = '/monitoring-omzet-pusat';
+const CADANGAN = {'2026-10': {label: 'flow Oktober', path: '/monitoring-omzet-okt?sheet=okt'}, '2026-11': {label: 'flow November', path: '/monitoring-omzet'}};
+const BULAN_AWAL = '2025-12';   // data pusat mulai Des 2025
+// Bobot kumulatif minggu (sheet Target Control → MINGGUAN TOTAL: 27/27/23/23%). Dipakai bila respons server tidak mengirim bobot_minggu.
+const BOBOT_MINGGU = [0.27, 0.27, 0.23, 0.23];
+const AMBANG = {hijau: 1.00, kuning: 0.80};   // ≥100% hijau, 80–99,9% kuning, <80% merah
+const QS = new URLSearchParams(location.search), DEMO_Q = QS.get('demo') === '1';
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const BULAN = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+const bulanLabel = b => { const m = /^(\d{4})-(\d{2})$/.exec(b || ''); return m ? BULAN[+m[2] - 1] + ' ' + m[1] : (b || '-'); };
+const rp = n => (n < 0 ? '−' : '') + 'Rp' + Math.round(Math.abs(n)).toLocaleString('id-ID');
+const rpS = n => { const a = Math.abs(n), s = n < 0 ? '−' : ''; return a >= 1e9 ? s + 'Rp' + (a / 1e9).toLocaleString('id-ID', {maximumFractionDigits: 2}) + ' M' : a >= 1e6 ? s + 'Rp' + (a / 1e6).toLocaleString('id-ID', {maximumFractionDigits: 1}) + ' jt' : s + 'Rp' + Math.round(a).toLocaleString('id-ID'); };
+const pc = x => (x * 100).toLocaleString('id-ID', {minimumFractionDigits: 1, maximumFractionDigits: 1}) + '%';
+const BD = '<span class="tag st-n">belum diisi</span>';
+const stCls = p => p == null ? 'st-n' : p >= AMBANG.hijau ? 'st-g' : p >= AMBANG.kuning ? 'st-y' : 'st-r';
+const stCol = p => p == null ? '#d6c8b8' : p >= AMBANG.hijau ? '#2e7d32' : p >= AMBANG.kuning ? '#e0a800' : '#c62828';
+
+/* ===== Data ilustrasi (dokumen SOP bagian H "Simulasi Penerapan Monitoring") — BUKAN data aktual =====
+   Total realisasi = angka dokumen (65/72/60/49 jt); pembagian per minggu dibuat contoh, laporan di minggu 3. */
+const DEMO = {ok: true, demo: true, bulan: '2026-11', minggu: 3, bobot_minggu: BOBOT_MINGGU, outlet: [
+  {nama: 'Makassar A', target_bulanan: 100e6, realisasi_per_minggu: [23e6, 22e6, 20e6, null]},
+  {nama: 'Makassar B', target_bulanan: 90e6, realisasi_per_minggu: [25e6, 24e6, 23e6, null]},
+  {nama: 'Gowa A', target_bulanan: 80e6, realisasi_per_minggu: [21e6, 20e6, 19e6, null]},
+  {nama: 'Parepare', target_bulanan: 70e6, realisasi_per_minggu: [17e6, 16e6, 16e6, null]}],
+  channel: {kolom_admin: true, kolom_live: true, outlet: [
+    {nama: 'Makassar A', offline: 30e6, organik: 9e6, ads: 11e6, live: 1.2e6, online_kasir: 2.5e6, ojol: 8e6, hari_isi: 18, hari_admin: 16, hari_omzet: 21, status_admin: 'sebagian', selisih: 0, hari_beda: 0, selisih_online: 250000, hari_beda_online: 2},
+    {nama: 'Makassar B', offline: 26e6, organik: 12e6, ads: 18e6, live: 1.8e6, online_kasir: 0, ojol: 9e6, hari_isi: 21, hari_admin: 21, hari_omzet: 21, status_admin: 'lengkap', selisih: -150000, hari_beda: 1, selisih_online: 0, hari_beda_online: 0},
+    {nama: 'Gowa A', offline: 33e6, organik: null, ads: null, live: null, online_kasir: 12e6, ojol: 5e6, hari_isi: 15, hari_admin: 0, hari_omzet: 21, status_admin: 'belum', selisih: 0, hari_beda: 0, selisih_online: null, hari_beda_online: 0},
+    {nama: 'Parepare', offline: null, organik: null, ads: null, live: null, online_kasir: null, ojol: null, hari_isi: 0, hari_admin: 0, hari_omzet: 21, status_admin: 'belum', selisih: null, hari_beda: 0, selisih_online: null, hari_beda_online: 0}]},
+  channel_brand: {target: [{channel: 'TAKEAWAY OUTLET', kontribusi: 0.48, target: 163.2e6}, {channel: 'ONLINE ORGANIK', kontribusi: 0.18, target: 61.2e6}, {channel: 'ONLINE ADS', kontribusi: 0.28, target: 95.2e6}, {channel: 'LIVE SHOPPING', kontribusi: 0.02, target: 6.8e6}, {channel: 'OJOL', kontribusi: 0.04, target: 13.6e6}],
+    progres_bobot: 0.77, online_belum_dipisah: 14.5e6, banding: [
+      {channel_kasir: 'Offline', channel_target: ['TAKEAWAY OUTLET'], dasar: 'ChannelHarian kasir', realisasi: 89e6, cakupan: 0.64, langsung: true, terukur: true, target_bulanan: 163.2e6, target_progres: 125.66e6, achieve_progres: null},
+      {channel_kasir: 'Online Organik', channel_target: ['ONLINE ORGANIK'], dasar: 'OnlineHarian admin', realisasi: 21e6, cakupan: 0.44, langsung: true, terukur: true, target_bulanan: 61.2e6, target_progres: 47.12e6, achieve_progres: null},
+      {channel_kasir: 'Online Ads', channel_target: ['ONLINE ADS'], dasar: 'OnlineHarian admin', realisasi: 29e6, cakupan: 0.44, langsung: true, terukur: true, target_bulanan: 95.2e6, target_progres: 73.3e6, achieve_progres: null},
+      {channel_kasir: 'Ojol', channel_target: ['OJOL'], dasar: 'kolom Ojol kasir', realisasi: 10.5e6, cakupan: 1, langsung: true, terukur: true, target_bulanan: 13.6e6, target_progres: 10.47e6, achieve_progres: 1.003},
+      {channel_kasir: 'Live Shopping', channel_target: ['LIVE SHOPPING'], dasar: 'OnlineHarian admin (kolom Live Shopping)', realisasi: 3e6, cakupan: 0.44, langsung: true, terukur: true, target_bulanan: 6.8e6, target_progres: 5.24e6, achieve_progres: null},
+      {channel_kasir: '—', channel_target: ['CRM'], dasar: 'tidak dicatat', realisasi: null, cakupan: null, langsung: false, terukur: false, target_bulanan: null, target_progres: null, achieve_progres: null}]}};
+
+/* ===== Perhitungan (fungsi murni, dipakai juga oleh tes) =====
+   Target progres kumulatif = target bulanan × Σ bobot minggu 1..m
+   Realisasi kumulatif      = Σ realisasi minggu 1..m yang sudah diisi (kosong/0 = belum diisi, tidak dihitung nol)
+   % thd target bulanan     = realisasi kumulatif ÷ target bulanan
+   % thd target progres     = realisasi kumulatif ÷ target progres
+   Selisih                  = realisasi kumulatif − target progres
+   Sisa target bulanan      = max(target bulanan − realisasi kumulatif, 0)
+   Peringkat                = urut % thd target progres (tertinggi = 1); seri → realisasi lebih besar dulu; outlet belum diisi tidak diberi peringkat */
+function hitung(data, m) {
+  const bobot = (Array.isArray(data.bobot_minggu) && data.bobot_minggu.length >= 4 && data.bobot_minggu.every(b => +b > 0)) ? data.bobot_minggu.map(Number) : BOBOT_MINGGU;
+  // minggu berjalan (belum lengkap, mis. M4 s/d tgl 26): bobot minggu itu diprorata hari terisi ÷ hari minggu itu
+  const mb = data.minggu_berjalan, pro = mb && +mb.minggu === m && +mb.hari_total > 0 ? Math.min(1, +mb.hari / +mb.hari_total) : 1;
+  const kum = bobot.slice(0, m - 1).reduce((a, b) => a + b, 0) + (bobot[m - 1] || 0) * pro;
+  const val = v => { const n = typeof v === 'number' ? v : Number(String(v ?? '').replace(/[^\d.-]/g, '')); return isFinite(n) && n !== 0 && v !== '' && v != null ? n : null; };
+  const rows = (data.outlet || []).map(o => {
+    const T = val(o.target_bulanan), rpm = (o.realisasi_per_minggu || []).slice(0, 4).map(val);
+    while (rpm.length < 4) rpm.push(null);
+    const isi = rpm.slice(0, m).filter(v => v != null), kosong = rpm.slice(0, m).map((v, i) => v == null ? i + 1 : 0).filter(Boolean);
+    const P = T != null ? T * kum : null, R = isi.length ? isi.reduce((a, b) => a + b, 0) : null;
+    return {nama: String(o.nama || '').trim() || '(tanpa nama)', T, P, R, rpm, kosong,
+      pB: T > 0 && R != null ? R / T : null, pP: P > 0 && R != null ? R / P : null,
+      sel: P != null && R != null ? R - P : null, sisa: T != null && R != null ? Math.max(T - R, 0) : null, rank: null};
+  });
+  const ranked = rows.filter(r => r.pP != null).sort((a, b) => b.pP - a.pP || b.R - a.R);
+  ranked.forEach((r, i) => r.rank = i + 1);
+  const ada = rows.filter(r => r.R != null && r.T != null);
+  const s = (a, k) => a.reduce((t, r) => t + (r[k] || 0), 0);
+  const tot = {T: s(rows, 'T'), P: s(rows, 'P'), nIsi: ada.length, n: rows.length,
+    R: ada.length ? s(ada, 'R') : null, Tisi: s(ada, 'T'), Pisi: s(ada, 'P')};
+  tot.pB = ada.length && tot.Tisi > 0 ? tot.R / tot.Tisi : null;
+  tot.pP = ada.length && tot.Pisi > 0 ? tot.R / tot.Pisi : null;
+  tot.sel = ada.length ? tot.R - tot.Pisi : null;
+  tot.sisa = ada.length ? s(ada, 'sisa') : null;
+  tot.bawah = ranked.filter(r => r.pP < 1).length;
+  return {rows, ranked, tot, bobot, kum, m, pro, mb: pro < 1 ? mb : null};
+}
+
+/* ===== State & muat data ===== */
+let DATA = null, DATA_SRC = null, M = 1, SORT = {k: 'rank', d: 1}, CH = {}, PERTAMA = true, RK = null;
+{ // daftar bulan: BULAN_AWAL … bulan depan (WITA); ?bulan=YYYY-MM | okt | nov
+  const wita = new Date(Date.now() + 8 * 3600e3), cur = wita.toISOString().slice(0, 7), opts = [];
+  let [y, m] = BULAN_AWAL.split('-').map(Number); const [ye, me] = [wita.getUTCFullYear(), wita.getUTCMonth() + 2];
+  while (y < ye || (y === ye && m <= me)) { const v = y + '-' + String(m).padStart(2, '0'); opts.push(v); if (++m > 12) { m = 1; y++; } }
+  $('fBulan').innerHTML = opts.reverse().map(v => `<option value="${v}">${bulanLabel(v)}</option>`).join('');
+  const qb = (QS.get('bulan') || QS.get('sheet') || '').toLowerCase();
+  const pilih = /^\d{4}-\d{2}$/.test(qb) ? qb : /^okt/.test(qb) ? '2026-10' : /^nov/.test(qb) ? '2026-11' : cur;
+  $('fBulan').value = opts.includes(pilih) ? pilih : cur;
+}
+async function ambil(path) {
+  const ctl = new AbortController(), to = setTimeout(() => ctl.abort(), 20000);
+  try {
+    const r = await fetch(N8N_URL + path + (path.includes('?') ? '&' : '?') + 't=' + Date.now(), {cache: 'no-store', signal: ctl.signal});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const txt = await r.text(), d = txt.trim() ? JSON.parse(txt) : null;
+    if (!d || d.ok === false || !Array.isArray(d.outlet)) throw new Error(d && d.message ? d.message : 'format respons tidak dikenal');
+    return d;
+  } catch (e) { throw new Error(e.name === 'AbortError' ? 'waktu habis' : e.message); } finally { clearTimeout(to); }
+}
+// pusat "kosong" = tidak ada target dan tidak ada omzet sama sekali → coba cadangan
+const kosong = d => !(d.outlet || []).some(o => +o.target_bulanan > 0 || (o.realisasi_per_minggu || []).some(v => +v > 0));
+async function muat() {
+  const b = $('bMain'); b.className = 'banner warn'; b.textContent = '⏳ Memuat data omzet…';
+  const bl = $('fBulan').value, cad = CADANGAN[bl];
+  let d = null, gagal = '', SRC = null;
+  if (!DEMO_Q) {
+    let dp = null;
+    try { dp = await ambil(PUSAT + '?bulan=' + bl); } catch (e) { gagal = 'Sheet Pusat: ' + e.message; }
+    if (dp && !(cad && kosong(dp))) { d = dp; SRC = {jenis: 'pusat', label: 'Sheet Pusat'}; }
+    else {
+      if (dp) gagal = 'data Sheet Pusat ' + bulanLabel(bl) + ' masih kosong';
+      if (cad) { try { d = await ambil(cad.path); SRC = {jenis: 'cadangan', label: cad.label, alasan: gagal}; } catch (e2) { gagal += ' · ' + cad.label + ': ' + e2.message; } }
+      if (!d && dp) { d = dp; SRC = {jenis: 'pusat', label: 'Sheet Pusat'}; }
+    }
+  }
+  DATA_SRC = d ? SRC : null;
+  const demo = !d;
+  DATA = demo ? JSON.parse(JSON.stringify(DEMO)) : d;
+  $('ilus').classList.toggle('on', demo);
+  if (demo && !DEMO_Q) { b.className = 'banner err'; b.innerHTML = '⚠️ Data ' + esc(bulanLabel(bl)) + ' tidak terbaca (' + esc(gagal) + '). Menampilkan <b>Data contoh</b>, bukan data aktual. Pastikan flow <code>monitoring-omzet-pusat</code> sudah di-import dan aktif di n8n.'; }
+  else if (!demo && DATA_SRC.jenis === 'cadangan') { b.className = 'banner warn'; b.innerHTML = 'ℹ️ Memakai sumber cadangan (' + esc(DATA_SRC.label) + ') karena ' + esc(DATA_SRC.alasan) + '. Tab Channel hanya tersedia dari Sheet Pusat.'; }
+  else if (demo) { b.className = 'banner warn'; b.innerHTML = '🧪 Mode demo (<code>?demo=1</code>): <b>Data contoh</b> dari dokumen SOP, bukan data aktual.'; }
+  else { b.className = 'banner'; b.textContent = ''; }
+  const info = []; if (!demo) {
+    if ((d.gagal || []).length) info.push('Bagian sheet tidak terbaca: ' + d.gagal.map(esc).join(', '));
+    (d.catatan || []).forEach(c => info.push(esc(c)));
+  }
+  $('bInfo').className = info.length ? 'banner warn' : 'banner'; $('bInfo').innerHTML = info.map(x => 'ℹ️ ' + x).join('<br>');
+  // minggu pelaporan otomatis = minggu terakhir yang sudah terisi (dari server); ?minggu=n hanya berlaku saat halaman pertama dibuka
+  const qm = PERTAMA ? +QS.get('minggu') : 0; PERTAMA = false;
+  M = qm >= 1 && qm <= 4 ? qm : (DATA.minggu >= 1 && DATA.minggu <= 4 ? DATA.minggu : 1);
+  $('upd').textContent = 'Diperbarui ' + new Date().toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'}) + ' · ' + (DATA.outlet || []).length + ' outlet';
+  render();
+}
+
+/* ===== Render ===== */
+const COLS = [['rank', 'Peringkat', ''], ['nama', 'Outlet', ''], ['T', 'Target Omzet Bulanan', 'r'], ['P', 'Target Progres s/d Minggu {m}', 'r'], ['R', 'Realisasi Kumulatif', 'r'], ['pB', '% thd Target Bulanan', 'r'], ['pP', '% thd Target Progres', 'r'], ['sel', 'Selisih thd Target Progres', 'r'], ['sisa', 'Sisa Target Bulanan', 'r']];
+function render() {
+  const MB = DATA.minggu_berjalan;
+  document.querySelectorAll('#fMinggu button').forEach(x => { x.classList.toggle('on', +x.dataset.v === M);
+    x.textContent = 'Minggu ' + x.dataset.v + (MB && +MB.minggu === +x.dataset.v ? ' (berjalan s/d tgl ' + MB.sampai_tgl + ')' : ''); });
+  const H = hitung(DATA, M), t = H.tot, kpct = pc(H.kum);
+  const belum = t.n - t.nIsi;
+  const K = [
+    ['Total Target Bulanan', rp(t.T), t.n + ' outlet'],
+    ['Target Progres s/d Minggu ' + M, rp(t.P), 'bobot kumulatif ' + kpct],
+    ['Total Realisasi Kumulatif', t.R == null ? 'Belum diisi' : rp(t.R), t.R == null ? 'realisasi minggu 1–' + M + ' masih kosong' : (belum ? t.nIsi + ' dari ' + t.n + ' outlet sudah diisi' : 'minggu 1–' + M)],
+    ['% Capaian', t.pP == null ? '—' : pc(t.pP), t.pP == null ? 'menunggu realisasi' : 'thd target progres · ' + pc(t.pB) + ' thd target bulanan', t.pP == null ? '' : t.pP >= 1 ? 'pos' : 'neg'],
+    ['Selisih thd Target Progres', t.sel == null ? '—' : (t.sel > 0 ? '+' : '') + rp(t.sel), t.sel == null ? 'menunggu realisasi' : t.sel < 0 ? 'di bawah target progres' : 'di atas target progres', t.sel == null ? '' : t.sel < 0 ? 'neg' : 'pos'],
+    ['Outlet di Bawah Progres', t.nIsi ? t.bawah + ' / ' + t.nIsi : '—', belum ? belum + ' outlet belum diisi' : '% thd target progres < 100%', t.bawah ? 'neg' : '']];
+  if (H.mb) { K[1][0] += ' (berjalan s/d tgl ' + H.mb.sampai_tgl + ')'; K[1][2] += ' · M' + M + ' diprorata ' + H.mb.hari + '/' + H.mb.hari_total + ' hari'; }
+  const KS = !DATA.demo && ['PENUTUPAN KASIR', 'SHEET PUSAT'].includes(DATA.sumber_realisasi);
+  $('bCh').className = KS ? 'banner src' : 'banner'; $('bCh').textContent = !KS ? '' : DATA.sumber_realisasi === 'SHEET PUSAT' ? 'Sumber: Sheet Pusat (Rekap Omzet Master + Data Omzet Harian · omzet Tunai+QRIS+Ojol, tanpa ongkir)' : 'Sumber: Penutupan Kasir (E+F+G, tanpa ongkir) · cadangan';
+  $('kpi').innerHTML = K.map(k => `<div class="card kpi"><b class="${k[3] || ''}">${k[1]}</b><span>${k[0]}</span><small>${esc(k[2])}</small></div>`).join('');
+  renderTabel(H); renderMinggu(H); renderChart(H); renderRank(H); renderChannel(H);
+  $('rkNote').textContent = 'Peringkat = % terhadap target progres (tertinggi = 1)';
+  $('foot').innerHTML = `<b>Rumus</b> (minggu pelaporan m = ${M}, bobot minggu ${H.bobot.map(pc).join(' / ')}):<br>
+   • Target progres kumulatif = target bulanan × (bobot minggu 1 + … + minggu m) = target bulanan × <b>${kpct}</b>${H.mb ? ` · <b>minggu ${M} masih berjalan (s/d tgl ${H.mb.sampai_tgl})</b>: bobotnya diprorata ${H.mb.hari}/${H.mb.hari_total} hari` : ''}<br>
+   • Realisasi kumulatif = jumlah realisasi minggu 1 s/d m yang sudah diisi · sel kosong/0 di sheet = <i>belum diisi</i>, tidak dihitung Rp0${KS ? ' · realisasi harian = Tunai + QRIS + Ojol (kolom E+F+G Penutupan Kasir, tanpa ongkir)' : ''}<br>
+   • % thd target bulanan = realisasi ÷ target bulanan · % thd target progres = realisasi ÷ target progres<br>
+   • Selisih = realisasi − target progres (minus/merah = tertinggal) · Sisa target = target bulanan − realisasi (minimal 0)<br>
+   • Peringkat = urutan % thd target progres, tertinggi = 1; seri → realisasi lebih besar. Outlet yang belum diisi tidak diberi peringkat.<br>
+   • Warna status (% thd target progres): hijau ≥100%, kuning 80–99%, merah &lt;80%. Baris total menjumlah outlet yang sudah diisi.<br>
+   <span class="muted">Sumber: ${DATA.demo ? 'data ilustrasi dokumen SOP bagian H (bukan data aktual)' : esc(DATA.sumber || 'n8n /monitoring-omzet')} · periode ${esc(bulanLabel(DATA.bulan))}</span>`;
+}
+function renderTabel(H) {
+  const q = $('q').value.trim().toLowerCase(), m = H.m;
+  let R = H.rows.filter(r => !q || r.nama.toLowerCase().includes(q));
+  const k = SORT.k, d = SORT.d;
+  R.sort((a, b) => { const x = a[k], y = b[k]; if (x == null && y == null) return 0; if (x == null) return 1; if (y == null) return -1; return (typeof x === 'string' ? x.localeCompare(y) : x - y) * d; });
+  $('tbl').tHead.innerHTML = '<tr>' + COLS.map(([c, l, cl], i) => `<th data-k="${c}" class="${cl} ${i === 0 ? 'sl' : i === 1 ? 'sl2' : ''}">${l.replace('{m}', m)} <span class="ar">${SORT.k === c ? (SORT.d > 0 ? '▲' : '▼') : ''}</span></th>`).join('') + '</tr>';
+  const mon = (v, cls) => v == null ? BD : `<span class="${cls || ''}">${rp(v)}</span>`;
+  $('tbl').tBodies[0].innerHTML = R.map(r => {
+    const part = r.R != null && r.kosong.length ? `<br><small class="muted">minggu ${r.kosong.join(', ')} belum diisi</small>` : '';
+    return `<tr data-nama="${esc(r.nama)}"><td class="sl">${r.rank ? `<span class="rk ${r.rank <= 3 ? 't' + r.rank : ''}">${r.rank}</span>` : '<span class="muted">—</span>'}</td>
+    <td class="sl2"><b>${esc(r.nama)}</b></td><td class="r">${r.T == null ? '<span class="muted">target kosong</span>' : rp(r.T)}</td><td class="r">${r.P == null ? '—' : rp(r.P)}</td>
+    <td class="r">${r.R == null ? BD : '<b>' + rp(r.R) + '</b>' + part}</td>
+    <td class="r">${r.pB == null ? '—' : pc(r.pB) + `<div class="bar"><i style="width:${Math.min(100, r.pB * 100)}%"></i></div>`}</td>
+    <td class="r">${r.pP == null ? '<span class="tag st-n">—</span>' : `<span class="tag ${stCls(r.pP)}">${pc(r.pP)}</span>`}</td>
+    <td class="r">${r.sel == null ? '—' : `<span class="${r.sel < 0 ? 'neg' : 'pos'}">${r.sel > 0 ? '+' : ''}${rp(r.sel)}</span>`}</td>
+    <td class="r">${r.sisa == null ? '—' : rp(r.sisa)}</td></tr>`; }).join('') || '<tr><td colspan="9"><small>Tidak ada outlet yang cocok.</small></td></tr>';
+  const t = H.tot;
+  $('tbl').tFoot.innerHTML = `<tr><td class="sl"></td><td class="sl2">TOTAL${t.nIsi && t.nIsi < t.n ? `<br><small class="muted">%/selisih dari ${t.nIsi} outlet terisi</small>` : ''}</td><td class="r">${rp(t.T)}</td><td class="r">${rp(t.P)}</td><td class="r">${t.R == null ? BD : rp(t.R)}</td>
+   <td class="r">${t.pB == null ? '—' : pc(t.pB)}</td><td class="r">${t.pP == null ? '—' : `<span class="tag ${stCls(t.pP)}">${pc(t.pP)}</span>`}</td>
+   <td class="r">${t.sel == null ? '—' : `<span class="${t.sel < 0 ? 'neg' : 'pos'}">${t.sel > 0 ? '+' : ''}${rp(t.sel)}</span>`}</td><td class="r">${t.sisa == null ? '—' : rp(t.sisa)}</td></tr>`;
+}
+// target minggu w (bukan kumulatif): target_per_minggu dari server, bila kosong = target bulanan × bobot; minggu berjalan diprorata hari
+const proW = w => { const mb = DATA.minggu_berjalan; return mb && +mb.hari_total > 0 && +mb.minggu - 1 === w ? Math.min(1, +mb.hari / +mb.hari_total) : 1; };
+function tgtMinggu(H, r, w) { const o = (DATA.outlet || []).find(x => String(x.nama || '').trim() === r.nama) || {}, tp = o.target_per_minggu, v = tp && +tp[w] > 0 ? +tp[w] : r.T != null ? r.T * H.bobot[w] : null; return v == null ? null : v * proW(w); }
+const sgnRp = v => (v > 0 ? '+' : '') + rp(v);
+function sel3(R, T, extra) { if (R == null) return '<td class="r bd">belum diisi</td>'; const p = T > 0 ? R / T : null, sl = T != null ? R - T : null;
+  return `<td class="r"><b>${rp(R)}</b><small class="muted">target ${T == null ? '—' : rp(T)}</small>${sl == null ? '' : `<small class="${sl < 0 ? 'neg' : 'pos'}">${sgnRp(sl)}${p != null ? ' · ' + pc(p) : ''}</small>`}${extra || ''}</td>`; }
+function renderMinggu(H) {
+  const mbw = DATA.minggu_berjalan && +DATA.minggu_berjalan.hari_total > 0 ? +DATA.minggu_berjalan.minggu - 1 : -1, mb = DATA.minggu_berjalan;
+  const hd = w => `Minggu ${w + 1}<br><small>${w === 3 ? 'tgl 22–akhir' : 'tgl ' + (w * 7 + 1) + '–' + (w * 7 + 7)}${w === mbw ? ' · berjalan s/d tgl ' + mb.sampai_tgl : ''}</small>`;
+  const tot = f => [0, 1, 2, 3].map(w => { const v = H.rows.map(r => f(r, w)).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; });
+  const RW = tot((r, w) => r.rpm[w]), TW = [0, 1, 2, 3].map(w => { const v = H.rows.filter(r => r.rpm[w] != null).map(r => tgtMinggu(H, r, w)).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; });
+  $('tWk').innerHTML = `<thead><tr><th>Outlet</th>${[0, 1, 2, 3].map(w => `<th class="r">${hd(w)}<br><small>bobot ${pc(H.bobot[w])}</small></th>`).join('')}</tr></thead><tbody>` +
+    H.rows.map(r => `<tr><td><b>${esc(r.nama)}</b></td>${[0, 1, 2, 3].map(w => sel3(r.rpm[w], tgtMinggu(H, r, w))).join('')}</tr>`).join('') +
+    `</tbody><tfoot><tr><td>TOTAL<br><small class="muted">target = outlet yang terisi</small></td>${[0, 1, 2, 3].map(w => sel3(RW[w], TW[w])).join('')}</tr></tfoot>`;
+  // kumulatif: target progres = target bulanan × bobot kumulatif (27/54/77/100%)
+  const kum = [0, 1, 2, 3].map(w => H.bobot.slice(0, w).reduce((a, b) => a + b, 0) + H.bobot[w] * proW(w));
+  $('nKum').textContent = 'target progres s/d minggu m = target bulanan × bobot kumulatif (' + kum.map(pc).join(' / ') + ') · sisa = target bulanan − omzet kumulatif';
+  const cumR = r => [0, 1, 2, 3].map(w => { const v = r.rpm.slice(0, w + 1).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; });
+  const cell = (R, T, TB) => sel3(R, T, R != null && TB != null ? `<small class="muted">sisa ${rp(Math.max(TB - R, 0))}</small>` : '');
+  $('tKum').innerHTML = `<thead><tr><th>Outlet</th><th class="r">Target Bulanan</th>${[0, 1, 2, 3].map(w => `<th class="r">s/d Minggu ${w + 1}<br><small>progres ${pc(kum[w])}${w === mbw ? ' · s/d tgl ' + mb.sampai_tgl : ''}</small></th>`).join('')}</tr></thead><tbody>` +
+    H.rows.map(r => { const c = cumR(r); return `<tr><td><b>${esc(r.nama)}</b></td><td class="r">${r.T == null ? '<span class="muted">kosong</span>' : rp(r.T)}</td>${[0, 1, 2, 3].map(w => cell(c[w], r.T == null ? null : r.T * kum[w], r.T)).join('')}</tr>`; }).join('') +
+    (() => { const C = H.rows.map(cumR), cols = [0, 1, 2, 3].map(w => { const isi = H.rows.map((r, i) => [r, C[i][w]]).filter(x => x[1] != null && x[0].T != null); return isi.length ? [isi.reduce((a, x) => a + x[1], 0), isi.reduce((a, x) => a + x[0].T * kum[w], 0), isi.reduce((a, x) => a + x[0].T, 0)] : [null, null, null]; });
+      return `</tbody><tfoot><tr><td>TOTAL</td><td class="r">${rp(H.tot.T)}</td>${cols.map(x => cell(x[0], x[1], x[2])).join('')}</tr></tfoot>`; })();
+}
+// ===== Ranking: omzet tertinggi = 1 (per minggu atau akumulasi s/d minggu pelaporan) =====
+function hitungRank(H, mode) {
+  const akum = mode === 'akum', w = akum ? H.m - 1 : +mode - 1;
+  const rows = H.rows.map(r => { let R, T;
+    if (akum) { R = r.R; T = r.P; } else { R = r.rpm[w]; T = tgtMinggu(H, r, w); }
+    return {nama: r.nama, R, T, p: T > 0 && R != null ? R / T : null, sel: T != null && R != null ? R - T : null, rank: null}; });
+  rows.filter(x => x.R != null).sort((a, b) => b.R - a.R).forEach((x, i) => x.rank = i + 1);
+  return rows.sort((a, b) => (a.rank ?? 99) - (b.rank ?? 99));
+}
+function renderRank(H) {
+  if (RK == null || (RK !== 'akum' && +RK > 4)) RK = String(H.m);
+  document.querySelectorAll('#fRank button').forEach(x => { x.classList.toggle('on', x.dataset.v === RK); if (x.dataset.v === 'akum') x.textContent = 'Akumulasi s/d M' + H.m; });
+  const rows = hitungRank(H, RK), akum = RK === 'akum', mbw = DATA.minggu_berjalan ? +DATA.minggu_berjalan.minggu : 0;
+  $('hRank').textContent = akum ? 'Ranking Omzet Akumulasi Bulan (s/d Minggu ' + H.m + ')' : 'Ranking Omzet Minggu ' + RK;
+  $('nRank').textContent = (akum ? 'akumulasi minggu 1–' + H.m + ' vs target progres' : 'omzet minggu ' + RK + ' vs target minggu ' + RK) + ((akum ? H.m : +RK) === mbw ? ' · minggu ' + mbw + ' berjalan s/d tgl ' + DATA.minggu_berjalan.sampai_tgl + ' (target diprorata)' : '') + ' · ganti minggu pelaporan di atas untuk akumulasi lain';
+  $('tRank').innerHTML = `<thead><tr><th class="sl">#</th><th>Outlet</th><th class="r">Omzet</th><th class="r">${akum ? 'Target Progres' : 'Target Minggu'}</th><th class="r">% Capaian</th><th class="r">Selisih</th></tr></thead><tbody>` +
+    rows.map(x => `<tr><td class="sl">${x.rank ? `<span class="rk ${x.rank <= 3 ? 't' + x.rank : ''}">${x.rank}</span>` : '<span class="muted">—</span>'}</td><td><b>${esc(x.nama)}</b></td><td class="r">${x.R == null ? BD : '<b>' + rp(x.R) + '</b>'}</td><td class="r">${x.T == null ? '—' : rp(x.T)}</td>
+      <td class="r">${x.p == null ? '—' : `<span class="tag ${stCls(x.p)}">${pc(x.p)}</span>`}</td><td class="r">${x.sel == null ? '—' : `<span class="${x.sel < 0 ? 'neg' : 'pos'}">${sgnRp(x.sel)}</span>`}</td></tr>`).join('') + '</tbody>';
+  if (CH.rk) { CH.rk.destroy(); CH.rk = null; }
+  const w = document.querySelector('[data-c="cRank"]'); if (!w.querySelector('canvas')) w.innerHTML = '<canvas id="cRank"></canvas>';
+  const isi = rows.filter(x => x.R != null);
+  if (!window.Chart) { w.innerHTML = '<div class="nochart">Grafik tidak bisa dimuat (Chart.js gagal diunduh).</div>'; return; }
+  if (!isi.length) { w.innerHTML = '<div class="nochart">Belum ada omzet untuk periode ini.</div>'; return; }
+  CH.rk = new Chart($('cRank'), {type: 'bar', data: {labels: isi.map(x => x.rank + '. ' + x.nama), datasets: [{label: 'Omzet', data: isi.map(x => x.R), backgroundColor: isi.map(x => stCol(x.p))}, {label: akum ? 'Target progres' : 'Target minggu', data: isi.map(x => x.T), backgroundColor: '#d6c8b8'}]},
+    options: {indexAxis: 'y', maintainAspectRatio: false, plugins: {legend: {position: 'bottom'}, tooltip: {mode: 'index', callbacks: {label: c => c.dataset.label + ': ' + (c.raw == null ? '—' : rp(c.raw)), afterBody: it => { const x = isi[it[0].dataIndex]; return x.p == null ? [] : ['% capaian: ' + pc(x.p)]; }}}}, scales: {x: {beginAtZero: true, ticks: {callback: v => rpS(v)}}}}});
+}
+// ===== Channel (hanya dari Sheet Pusat): Offline/Ojol kasir (ChannelHarian) + Online Organik/Ads/Live Shopping admin (OnlineHarian) =====
+const MIX = ['offline', 'organik', 'ads', 'live', 'online_kasir', 'ojol'];
+const CHC = {offline: '#7a3e12', organik: '#2e7d32', ads: '#1565c0', live: '#8e24aa', online_kasir: '#9e9e9e', ojol: '#e08a3c'};
+const ADM = ['organik', 'ads', 'live'];   // diisi admin (tab OnlineHarian)
+const CHL = {offline: 'Offline', organik: 'Online Organik', ads: 'Online Ads', live: 'Live Shopping', online_kasir: 'Online belum dipisah', ojol: 'Ojol'};
+const adminTag = c => c.status_admin === 'kolom_belum_ada' ? '<span class="tag st-r">kolom belum ada</span>' : !c.hari_admin ? '<span class="tag st-r">belum diisi admin</span>'
+  : c.hari_admin >= c.hari_omzet ? '<span class="tag st-g">lengkap</span>' : `<span class="tag st-y">${c.hari_admin}/${c.hari_omzet} hari</span>`;
+function renderChannel(H) {
+  const C = DATA.channel, B = DATA.channel_brand, ada = C && Array.isArray(C.outlet);
+  $('chNone').classList.toggle('hide', !!ada); $('chBox').classList.toggle('hide', !ada);
+  if (CH.ch) { CH.ch.destroy(); CH.ch = null; }
+  if (!ada) { $('chNoneTxt').textContent = 'Data channel hanya tersedia dari sumber Sheet Pusat (flow monitoring-omzet-pusat). Sumber saat ini: ' + (DATA_SRC && DATA_SRC.label ? DATA_SRC.label : 'cadangan') + '.'; return; }
+  // kompatibel dengan respons lama (tanpa organik/ads): WhatsApp kasir = online belum dipisah
+  const O = C.outlet.map(c => { const x = Object.assign({hari_admin: 0}, c); if (x.online_kasir === undefined) x.online_kasir = x.whatsapp ?? null; if (!x.status_admin) x.status_admin = C.kolom_admin === false || x.organik === undefined ? 'kolom_belum_ada' : 'belum';
+    if (!x.status_live) x.status_live = C.kolom_live === false || x.live === undefined ? 'kolom_belum_ada' : 'ada'; if (x.live === undefined) x.live = null;   // respons lama tanpa Live
+    x.tot = MIX.reduce((a, k) => a + (x[k] || 0), 0); x.cov = x.hari_omzet ? x.hari_isi / x.hari_omzet : null; x.covA = x.hari_omzet ? (x.hari_admin || 0) / x.hari_omzet : null; return x; });
+  const S = k => O.reduce((a, c) => a + (c[k] || 0), 0), T = MIX.reduce((a, k) => a + S(k), 0), hi = S('hari_isi'), ha = S('hari_admin'), ho = S('hari_omzet');
+  const belum = O.filter(c => !c.hari_admin).map(c => c.nama), kolomBelum = C.kolom_admin === false || O.every(c => c.status_admin === 'kolom_belum_ada'), liveBelum = !kolomBelum && (C.kolom_live === false || O.every(c => c.status_live === 'kolom_belum_ada'));
+  $('chNote').innerHTML = '<b>Sumber:</b> Offline &amp; Ojol dari tab <b>ChannelHarian</b> kasir; Online dipisah <b>Organik / Ads / Live Shopping</b> dari tab <b>OnlineHarian</b> yang diisi admin. Di hari admin belum isi, WhatsApp kasir masuk <b>Online belum dipisah</b> (abu-abu) dan tidak dihitung ke Organik/Ads/Live. Target brand dibanding langsung (Offline→Takeaway Outlet, Organik→Online Organik, Ads→Online Ads, Live→Live Shopping, Ojol→Ojol); <b>CRM tidak terukur</b>.' +
+    (ho ? ' Cakupan kasir ' + pc(hi / ho) + ', admin ' + pc(ha / ho) + ' hari-outlet.' : '') +
+    (kolomBelum ? ' <b class="neg">Kolom ch_organik/ch_ads belum ada di Data Omzet Harian — tambahkan judul kolom (lihat README).</b>' : '') + (liveBelum ? ' <b class="neg">Kolom ch_live belum ada di Data Omzet Harian — tambahkan judul ch_live di kolom AN (lihat README).</b>' : '') + (kolomBelum ? '' : belum.length ? ' <b class="neg">Belum diisi admin: ' + esc(belum.join(', ')) + '.</b>' : '') + (DATA.demo ? ' <b>Data contoh (ilustrasi).</b>' : '');
+  const K = T > 0 ? MIX.filter(k => k !== 'online_kasir' || S(k) > 0).map(k => k === 'live' && liveBelum ? [CHL[k], '—', 'kolom ch_live belum ada di Data Omzet Harian'] : [CHL[k], pc(S(k) / T), rp(S(k)) + ' · ' + (ADM.includes(k) ? ha + ' hari-outlet admin' : hi + ' hari-outlet kasir')]) : [['Channel', 'Belum diisi', 'ChannelHarian / OnlineHarian belum diisi bulan ini']];
+  K.push(['Cakupan Admin (OnlineHarian)', ho ? pc(ha / ho) : '—', ha + ' dari ' + ho + ' hari-outlet ber-omzet · kasir ' + (ho ? pc(hi / ho) : '—')]);
+  $('chKpi').innerHTML = K.map(k => `<div class="card kpi"><b>${k[1]}</b><span>${esc(k[0])}</span><small>${esc(k[2])}</small></div>`).join('');
+  $('tCh').innerHTML = `<thead><tr><th>Outlet</th>${MIX.map(k => `<th class="r">${CHL[k]}</th>`).join('')}<th>Porsi</th><th class="r">Hari Kasir / Admin / Ber-omzet</th><th class="r">Selisih Kasir vs Kaspin</th><th class="r">Selisih Online Admin vs WA Kasir</th></tr></thead><tbody>` +
+    O.map(c => { const sh = k => c.tot > 0 ? (c[k] || 0) / c.tot : null, adm = k => ADM.includes(k);
+      const cell = k => adm(k) ? (k === 'live' && c.status_live === 'kolom_belum_ada' && c.status_admin !== 'kolom_belum_ada' ? '<td class="r bd">kolom ch_live belum ada</td>' : c.hari_admin ? `<td class="r">${rp(c[k] || 0)}<small class="muted">${pc(sh(k) || 0)}</small></td>` : `<td class="r bd">${c.status_admin === 'kolom_belum_ada' ? 'kolom belum ada' : 'belum diisi admin'}</td>`)
+        : (c.hari_isi ? `<td class="r">${rp(c[k] || 0)}<small class="muted">${pc(sh(k) || 0)}</small></td>` : '<td class="r bd">belum diisi</td>');
+      return `<tr><td><b>${esc(c.nama)}</b></td>${MIX.map(cell).join('')}<td>${c.tot > 0 ? `<div class="stk">${MIX.map(k => `<i title="${CHL[k]} ${pc(sh(k))}" style="width:${sh(k) * 100}%;background:${CHC[k]}"></i>`).join('')}</div>` : '<span class="muted">—</span>'}</td>
+      <td class="r">${c.hari_isi} / ${c.hari_admin || 0} / ${c.hari_omzet}<small class="cov">${adminTag(c)}</small></td>
+      <td class="r">${c.selisih == null || !c.hari_isi ? '—' : `<span class="${Math.abs(c.selisih) > 0.5 ? 'neg' : 'pos'}">${sgnRp(c.selisih)}</span><small class="muted">${c.hari_beda ? c.hari_beda + ' hari beda' : 'cocok'}</small>`}</td>
+      <td class="r">${c.selisih_online == null ? '—' : `<span class="${Math.abs(c.selisih_online) > 0.5 ? 'neg' : 'pos'}">${sgnRp(c.selisih_online)}</span><small class="muted">${c.hari_beda_online ? c.hari_beda_online + ' hari beda' : 'cocok'}</small>`}</td></tr>`; }).join('') +
+    `</tbody><tfoot><tr><td>TOTAL</td>${MIX.map(k => `<td class="r">${(ADM.includes(k) ? (k === 'live' && liveBelum ? 0 : ha) : hi) ? rp(S(k)) + `<small>${T > 0 ? pc(S(k) / T) : ''}</small>` : '—'}</td>`).join('')}<td></td><td class="r">${hi} / ${ha} / ${ho}</td><td class="r">${hi ? sgnRp(S('selisih')) : '—'}</td><td class="r">${O.some(c => c.selisih_online != null) ? sgnRp(S('selisih_online')) : '—'}</td></tr></tfoot>`;
+  // brand: 1 baris per target channel, banding langsung
+  const bd = (B && B.banding) || [], tg = ((B && B.target) || []).slice();
+  if (tg.length && !tg.some(t => t.channel === 'CRM')) tg.push({channel: 'CRM', kontribusi: null, target: null});
+  $('nBrand').textContent = tg.length ? 'target channel bulan ini ' + rp(tg.reduce((a, c) => a + (c.target || 0), 0)) + ' · target progres = target × ' + pc(B.progres_bobot || 0) + ' (bobot kumulatif s/d minggu pelaporan server) · % capaian tampil bila cakupan hari 100%' + (B.online_belum_dipisah ? ' · Online belum dipisah (WA kasir, hari admin belum isi) ' + rp(B.online_belum_dipisah) + ' tidak masuk Organik/Ads/Live' : '') : 'target channel bulan ini belum diisi di tab target_channel';
+  $('tBrand').innerHTML = `<thead><tr><th>Target Channel</th><th class="r">Kontribusi</th><th class="r">Target Bulanan</th><th class="r">Target Progres</th><th>Realisasi dari</th><th class="r">Realisasi</th><th class="r">% thd Progres</th></tr></thead><tbody>` +
+    (tg.length ? tg.map(t => { let b = bd.find(x => (x.channel_target || []).includes(t.channel)); if (b && b.terukur === undefined && (b.channel_target || []).length > 1) b = Object.assign({}, b, {terukur: false, lama: true});
+      const tp = b && !b.lama && b.target_progres != null ? b.target_progres : t.target != null ? Math.round(t.target * (B.progres_bobot || 0)) : null;
+      const tail = !b || b.terukur === false ? `<td class="muted">${b && b.lama ? 'tidak bisa dibanding langsung (impor ulang flow monitoring untuk pemisahan Organik/Ads)' : 'tidak terukur (tidak dicatat kasir maupun admin)'}</td><td class="r">—</td><td class="r">—</td>` :
+        `<td><b>${esc(b.channel_kasir)}</b>${b.langsung ? ' <span class="tag st-g">langsung</span>' : ' <span class="tag st-y">perkiraan</span>'}<small class="muted" style="display:block">${esc(b.dasar)}</small></td>
+         <td class="r">${b.realisasi == null ? (/Organik|Ads|Live/.test(b.channel_kasir) ? `<span class="bd">${C.kolom_admin === false ? 'kolom belum ada' : /Live/.test(b.channel_kasir) && liveBelum ? 'kolom ch_live belum ada' : 'belum diisi admin'}</span>` : BD) : rp(b.realisasi)}${b.cakupan != null && b.cakupan < 1 ? `<small class="cov" style="display:block">cakupan ${pc(b.cakupan)} hari</small>` : ''}</td>
+         <td class="r">${b.achieve_progres == null ? '<span class="muted">—' + (b.cakupan != null && b.cakupan < 1 ? '<br><small>data belum lengkap</small>' : '') + '</span>' : `<span class="tag ${stCls(b.achieve_progres)}">${pc(b.achieve_progres)}</span>`}</td>`;
+      return `<tr><td>${esc(t.channel)}</td><td class="r">${t.kontribusi == null ? '—' : pc(t.kontribusi)}</td><td class="r">${t.target == null ? '—' : rp(t.target)}</td><td class="r">${tp == null ? '—' : rp(tp)}</td>${tail}</tr>`; }).join('')
+     : '<tr><td colspan="7" class="muted">Target channel belum ada.</td></tr>') + '</tbody>';
+  const w = document.querySelector('[data-c="cCh"]'); if (!w.querySelector('canvas')) w.innerHTML = '<canvas id="cCh"></canvas>';
+  const isi = O.filter(c => c.tot > 0);
+  if (!window.Chart) { w.innerHTML = '<div class="nochart">Grafik tidak bisa dimuat (Chart.js gagal diunduh).</div>'; return; }
+  if (!isi.length) { w.innerHTML = '<div class="nochart">ChannelHarian / OnlineHarian belum diisi untuk bulan ini.</div>'; return; }
+  const ks = MIX.filter(k => isi.some(c => c[k] > 0));
+  CH.ch = new Chart($('cCh'), {type: 'bar', data: {labels: isi.map(c => [c.nama, 'kasir ' + pc(c.cov || 0) + ' · admin ' + pc(c.covA || 0)]), datasets: ks.map(k => ({label: CHL[k], data: isi.map(c => +((c[k] || 0) / c.tot * 100).toFixed(1)), backgroundColor: CHC[k]}))},
+    options: {maintainAspectRatio: false, plugins: {legend: {position: 'bottom'}, tooltip: {callbacks: {label: c => c.dataset.label + ': ' + c.raw.toLocaleString('id-ID') + '% · ' + rp(isi[c.dataIndex][ks[c.datasetIndex]] || 0)}}}, scales: {x: {stacked: true}, y: {stacked: true, max: 100, ticks: {callback: v => v + '%'}}}}});
+}
+function renderChart(H) {
+  Object.values(CH).forEach(c => c && c.destroy()); CH = {};
+  const cards = ['cOut', 'cDon', 'cPct', 'cWk'];
+  document.querySelectorAll('.cw').forEach((w, i) => { if (!w.querySelector('canvas')) w.innerHTML = '<canvas id="' + w.dataset.c + '"></canvas>'; });
+  if (window.Chart) { Chart.defaults.animation = false; Chart.defaults.font.family = 'system-ui,Segoe UI,Roboto,sans-serif'; }
+  if (!window.Chart) { cards.forEach(id => { const cv = $(id); if (cv) cv.parentNode.innerHTML = '<div class="nochart">Grafik tidak bisa dimuat (Chart.js gagal diunduh).<br>Tabel di bawah tetap lengkap.</div>'; }); return; }
+  const ord = H.ranked.concat(H.rows.filter(r => r.rank == null)), L = ord.map(r => r.nama), noR = H.tot.R == null;
+  const nSel = ord.filter(r => r.sel != null).length;
+  $('nOut').textContent = noR ? 'Realisasi belum diisi, yang tampil baru target · selisih muncul setelah realisasi diisi'
+    : 'urut peringkat · minggu pelaporan ' + H.m + ' · batang ke-4 = selisih (merah minus, hijau plus)' + (nSel < ord.length ? ' · ' + (ord.length - nSel) + ' outlet belum diisi, selisih kosong' : '');
+  const tip = c => c.dataset.label + ': ' + (c.raw == null ? 'belum diisi' : rp(c.raw));
+  const SEL_M = '#c62828', SEL_P = '#2e7d32', sgn = v => (v > 0 ? '+' : '');
+  const ds = [
+    {label: 'Realisasi kumulatif', data: ord.map(r => r.R), backgroundColor: '#c8691c'},
+    {label: 'Target progres s/d M' + H.m, data: ord.map(r => r.P), backgroundColor: '#f2b46b'},
+    {label: 'Target bulanan', data: ord.map(r => r.T), backgroundColor: '#d6c8b8'}];
+  if (!noR) ds.push({label: 'Selisih (realisasi − target progres)', data: ord.map(r => r.sel), backgroundColor: ord.map(r => r.sel < 0 ? SEL_M : SEL_P)});
+  CH.o = new Chart($('cOut'), {type: 'bar', data: {labels: L, datasets: ds},
+    // label nilai selisih (Rp jt) di ujung batang ke-4 + garis nol
+    plugins: [{id: 'labelSel', afterDatasetsDraw(c) { if (c.data.datasets.length < 4) return; const g = c.ctx, a = c.chartArea, y0 = c.scales.y.getPixelForValue(0), meta = c.getDatasetMeta(3);
+      g.save(); g.strokeStyle = '#7a3e12'; g.lineWidth = 1; g.beginPath(); g.moveTo(a.left, y0); g.lineTo(a.right, y0); g.stroke();
+      if (!meta.hidden) { g.font = '700 ' + (c.width < 500 ? 9 : 11) + 'px system-ui,Segoe UI,Roboto,sans-serif'; g.textAlign = 'center';
+        meta.data.forEach((el, i) => { const v = ord[i].sel; if (v == null) return; g.fillStyle = v < 0 ? '#b71c1c' : '#1b5e20'; g.textBaseline = v < 0 ? 'top' : 'bottom';
+          g.fillText(sgn(v) + rpS(v).replace('Rp', '').replace(' jt', 'jt'), el.x, el.y + (v < 0 ? 3 : -3)); }); }
+      g.restore(); }}],
+    options: {maintainAspectRatio: false, layout: {padding: {top: 14}},
+      plugins: {legend: {position: 'bottom', labels: {boxWidth: 12, generateLabels: ch => Chart.defaults.plugins.legend.labels.generateLabels(ch).map(l => l.datasetIndex === 3 ? Object.assign(l, {fillStyle: SEL_M, strokeStyle: SEL_M, text: 'Selisih (merah −, hijau +)'}) : l)}},
+        tooltip: {mode: 'index', callbacks: {label: c => c.datasetIndex === 3 ? 'Selisih: ' + (c.raw == null ? 'belum diisi' : sgn(c.raw) + rp(c.raw)) : tip(c),
+          afterBody: it => { const r = ord[it[0].dataIndex]; return r.pP == null ? ['% thd target progres: belum diisi'] : ['% thd target progres: ' + pc(r.pP) + (r.sel < 0 ? ' · tertinggal ' + rp(-r.sel) : ' · di atas progres')]; }}}},
+      scales: {y: {beginAtZero: true, grace: '8%', ticks: {callback: v => rpS(v)}}}}});
+  const don = ord.filter(r => r.R != null);
+  if (!don.length) $('cDon').parentNode.innerHTML = '<div class="nochart">Belum ada realisasi yang diisi.</div>';
+  else CH.d = new Chart($('cDon'), {type: 'doughnut', data: {labels: don.map(r => r.nama), datasets: [{data: don.map(r => r.R), backgroundColor: ['#7a3e12', '#c8691c', '#e08a3c', '#f2b46b', '#d6c8b8', '#a0522d', '#8f4c1a', '#f5c99a', '#b07a4f', '#5c2e0e']}]},
+    options: {maintainAspectRatio: false, plugins: {legend: {position: 'bottom'}, tooltip: {callbacks: {label: c => c.label + ': ' + rp(c.raw) + ' (' + pc(c.raw / H.tot.R) + ')'}}}}});
+  if (!H.ranked.length) $('cPct').parentNode.innerHTML = '<div class="nochart">% capaian muncul setelah realisasi diisi.</div>';
+  else { const mx = Math.max(1.2, ...H.ranked.map(r => r.pP)) * 100;
+    CH.p = new Chart($('cPct'), {type: 'bar', data: {labels: H.ranked.map(r => r.nama), datasets: [{label: '% thd target progres', data: H.ranked.map(r => +(r.pP * 100).toFixed(1)), backgroundColor: H.ranked.map(r => stCol(r.pP))}]},
+      plugins: [{id: 'garis100', afterDatasetsDraw(c) { const x = c.scales.x.getPixelForValue(100), a = c.chartArea, g = c.ctx; g.save(); g.strokeStyle = '#7a3e12'; g.lineWidth = 1.5; g.setLineDash([6, 4]); g.beginPath(); g.moveTo(x, a.top); g.lineTo(x, a.bottom); g.stroke(); g.restore(); }}],
+      options: {indexAxis: 'y', maintainAspectRatio: false, plugins: {legend: {display: false}, tooltip: {callbacks: {label: c => c.dataset.label + ': ' + c.raw.toLocaleString('id-ID') + '%'}}}, scales: {x: {beginAtZero: true, max: Math.ceil(mx / 10) * 10, ticks: {callback: v => v + '%'}}}}}); }
+  const wkR = [0, 1, 2, 3].map(w => { const v = H.rows.map(r => r.rpm[w]).filter(x => x != null); return v.length ? v.reduce((a, b) => a + b, 0) : null; });
+  const MB = DATA.minggu_berjalan, mbw = MB && +MB.hari_total > 0 ? +MB.minggu - 1 : -1;
+  const wkT = [0, 1, 2, 3].map(w => H.tot.T * H.bobot[w] * (w === mbw ? Math.min(1, MB.hari / MB.hari_total) : 1));
+  CH.w = new Chart($('cWk'), {type: 'bar', data: {labels: [0, 1, 2, 3].map(w => w === mbw ? ['Minggu ' + (w + 1), 's/d tgl ' + MB.sampai_tgl] : 'Minggu ' + (w + 1)), datasets: [
+    {label: 'Realisasi', data: wkR, backgroundColor: [0, 1, 2, 3].map(w => w < H.m ? '#c8691c' : '#e8c9a8')},
+    {label: mbw >= 0 ? 'Target minggu (berjalan: prorata hari)' : 'Target minggu', data: wkT, backgroundColor: '#d6c8b8'}]},
+    options: {maintainAspectRatio: false, plugins: {legend: {position: 'bottom'}, tooltip: {mode: 'index', callbacks: {label: tip}}}, scales: {y: {beginAtZero: true, ticks: {callback: v => rpS(v)}}}}});
+}
+
+/* ===== Event ===== */
+document.querySelectorAll('#fMinggu button').forEach(b => b.onclick = () => { M = +b.dataset.v; render(); });
+$('q').oninput = () => DATA && renderTabel(hitung(DATA, M));
+$('tbl').addEventListener('click', e => { const th = e.target.closest('th'); if (!th) return; const k = th.dataset.k; SORT = {k, d: SORT.k === k ? -SORT.d : (k === 'rank' || k === 'nama' ? 1 : -1)}; renderTabel(hitung(DATA, M)); });
+const TABS = ['dash', 'minggu', 'rank', 'ch'];
+function bukaTab(t) { if (!TABS.includes(t)) t = 'dash'; document.querySelectorAll('#tabs button').forEach(x => x.classList.toggle('on', x.dataset.t === t)); TABS.forEach(k => $('t-' + k).classList.toggle('hide', k !== t)); if (DATA) render(); }
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => bukaTab(b.dataset.t));
+document.querySelectorAll('#fRank button').forEach(b => b.onclick = () => { RK = b.dataset.v; renderRank(hitung(DATA, M)); });
+if (QS.get('tab')) bukaTab(QS.get('tab'));
+$('btnRef').onclick = muat; $('fBulan').onchange = muat;
+window.hitung = hitung; window.hitungRank = hitungRank;
+muat();
+</script></body></html>
