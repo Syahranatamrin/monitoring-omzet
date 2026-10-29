@@ -35,7 +35,7 @@ tfoot td{font-weight:700;background:#faf4ec;border-top:2px solid #e8d5bd}tfoot t
 .rk{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}.rk .card{margin:0}.rk h4{margin:0 0 6px;font-size:14px;color:#7a3e12}
 .rk ol{list-style:none;margin:0;padding:0}.rk li{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1e8dc;font-size:13.5px}.rk li:last-child{border-bottom:0}
 .rk .md{width:26px;text-align:center;font-size:17px;line-height:1}.rk .no{display:inline-block;width:20px;height:20px;line-height:20px;border-radius:50%;background:#faf4ec;color:#8a7a6a;font-size:11px;font-weight:700}
-.rk .nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk .nv{font-weight:700;color:#2b2118;white-space:nowrap}.rk li.j1 .nv{color:#c8691c}.rk .kos{color:#9a8a7a;font-size:13px;padding:6px 0}
+.rk .nm{flex:1;min-width:0;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rk .nv{font-weight:700;color:#2b2118;white-space:nowrap}.rk li.j1 .nv{color:#c8691c}.rk .nv small{display:block;font-weight:500;font-size:11px;color:#8a7a6a;text-align:right}.rk .kos{color:#9a8a7a;font-size:13px;padding:6px 0}
 .vw{margin-bottom:8px}.vw .seg button{padding:7px 14px}
 .ttag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:11px;font-weight:600;background:#fff4d6;color:#7a5600;cursor:help}
 .juara{background:#fff7e0}.conote{font-size:11.5px;color:#8a7a6a;margin:-4px 0 4px}.dtag{display:inline-block;padding:0 6px;border-radius:9px;background:#eee;color:#777;font-size:11px;font-weight:600}
@@ -505,14 +505,15 @@ function render() {
   renderChart(H, kolT);
   renderRank(H, bs);
 }
-/* Top Ranking: realisasi tertinggi (Top 5) · minggu terpilih (Per Bulan / Kumulatif → minggu terakhir terisi) & akumulasi bulan */
+/* Top Ranking: % capaian terhadap target tertinggi (Top 5) · minggu terpilih (Per Bulan / Kumulatif → minggu terakhir terisi) & akumulasi bulan */
 const TOPN = 5, MEDALI = ['🥇', '🥈', '🥉'];
 function renderRank(H, bs) {
   const w = PER === 'minggu' && P !== 'kum' ? P : H.wAkhir;
-  const isi = (id, rows) => { const t = rows.filter(r => r.R != null && r.R > 0).sort((a, b) => b.R - a.R).slice(0, TOPN);
-    document.querySelector('#' + id + ' ol').innerHTML = t.length ? t.map((r, i) => `<li class="j${i + 1}"><span class="md">${MEDALI[i] || `<span class="no">${i + 1}</span>`}</span><span class="nm">${esc(r.nama)}</span><span class="nv">${rpS(r.R)}</span></li>`).join('') : '<li class="kos">belum ada data</li>'; };
-  $('rkMj').textContent = 'Top Ranking Minggu ' + (w + 1); isi('rkM', hitung(DATA, 'minggu', w).rows);
-  $('rkBj').textContent = 'Top Ranking Bulan ' + (BULAN[(+((DATA.bulan || $('fBulan').value).split('-')[1]) || 1) - 1] || ''); isi('rkB', hitung(DATA, 'bulan', 0).rows);
+  const isi = (id, rows, bln) => { const pk = r => bln && r.pSdHari != null ? r.pSdHari : r.p;   // bulan berjalan: % dari target s/d hari ini; selain itu % capaian periode (sama dengan tabel)
+    const t = rows.filter(r => r.R != null && r.R > 0 && pk(r) != null).sort((a, b) => pk(b) - pk(a) || b.R - a.R).slice(0, TOPN);
+    document.querySelector('#' + id + ' ol').innerHTML = t.length ? t.map((r, i) => `<li class="j${i + 1}"><span class="md">${MEDALI[i] || `<span class="no">${i + 1}</span>`}</span><span class="nm">${esc(r.nama)}</span><span class="nv">${pc(pk(r))}<small>${rpS(r.R)}</small></span></li>`).join('') : '<li class="kos">belum ada data</li>'; };
+  $('rkMj').textContent = 'Top Ranking Minggu ' + (w + 1) + ' (% capaian target)'; isi('rkM', hitung(DATA, 'minggu', w).rows, false);
+  $('rkBj').textContent = 'Top Ranking Bulan ' + (BULAN[(+((DATA.bulan || $('fBulan').value).split('-')[1]) || 1) - 1] || '') + ' (% capaian target)'; isi('rkB', hitung(DATA, 'bulan', 0).rows, true);
 }
 function renderChart(H, kolT) {
   if (CHART) { CHART.destroy(); CHART = null; }
