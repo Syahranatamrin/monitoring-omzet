@@ -1,5 +1,6 @@
 <!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Monitoring Omzet Outlet – Pizza Nyantuy</title>
+<script src="auth-omzet.js"></script>
 <script>/* ?lanjutan=1 → tampilan lama (Ranking, Channel, dll.) */ (function () { const q = new URLSearchParams(location.search); if (q.get('lanjutan') === '1') { q.delete('lanjutan'); location.replace('monitoring-omzet-lanjutan.html' + (q.toString() ? '?' + q : '')); } })();</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <style>
@@ -399,7 +400,7 @@ function renderTh() {
 }
 
 /* ===== State & muat ===== */
-let DATA = null, DATA_SRC = null, PER = 'minggu', P = 0, CHART = null, CHART_CH = null, PERTAMA = true, INFO = [], VIEW = ['channel', 'chout', 'tahunan'].includes(QS.get('tampilan')) ? QS.get('tampilan') : 'outlet', CHART_CO = null, CO_MODE = QS.get('periode') === 'tahunan' ? 'tahun' : 'bulan', CO_MET = QS.get('metrik') === 'porsi' ? 'porsi' : 'nominal', CO_BULAN = null, CO_OUTLET = QS.get('outlet') || 'semua', CO_SEQ = 0, CHD = null, CH_SRC = null, CH_LOADING = false, CH_MODE = QS.get('periode') === 'tahunan' ? 'tahun' : 'bulan', CH_MET = QS.get('metrik') === 'realisasi' ? 'nominal' : 'persen', CH_BULAN = null;
+let DATA = null, DATA_SRC = null, PER = 'minggu', P = 0, CHART = null, CHART_CH = null, PERTAMA = true, INFO = [], VIEW = window.MO_ROLE === 'clevel' && ['channel', 'chout', 'tahunan'].includes(QS.get('tampilan')) ? QS.get('tampilan') : 'outlet', CHART_CO = null, CO_MODE = QS.get('periode') === 'tahunan' ? 'tahun' : 'bulan', CO_MET = QS.get('metrik') === 'porsi' ? 'porsi' : 'nominal', CO_BULAN = null, CO_OUTLET = QS.get('outlet') || 'semua', CO_SEQ = 0, CHD = null, CH_SRC = null, CH_LOADING = false, CH_MODE = QS.get('periode') === 'tahunan' ? 'tahun' : 'bulan', CH_MET = QS.get('metrik') === 'realisasi' ? 'nominal' : 'persen', CH_BULAN = null;
 { const qp = (QS.get('periode') || '').toLowerCase(); if (qp === 'bulan') PER = 'bulan';
   const wita = new Date(Date.now() + 8 * 3600e3), cur = wita.toISOString().slice(0, 7), opts = [];
   let [y, m] = BULAN_AWAL.split('-').map(Number); const [ye, me] = [wita.getUTCFullYear(), wita.getUTCMonth() + 2];
