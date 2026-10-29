@@ -509,11 +509,11 @@ function render() {
 const TOPN = 5, MEDALI = ['🥇', '🥈', '🥉'];
 function renderRank(H, bs) {
   const w = PER === 'minggu' && P !== 'kum' ? P : H.wAkhir;
-  const isi = (id, rows, bln) => { const pk = r => bln && r.pSdHari != null ? r.pSdHari : r.p;   // bulan berjalan: % dari target s/d hari ini; selain itu % capaian periode (sama dengan tabel)
+  const isi = (id, rows) => { const pk = r => r.p;   // % capaian periode, sama dengan kolom % Capaian di tabel (bulan = target sebulan penuh)
     const t = rows.filter(r => r.R != null && r.R > 0 && pk(r) != null).sort((a, b) => pk(b) - pk(a) || b.R - a.R).slice(0, TOPN);
     document.querySelector('#' + id + ' ol').innerHTML = t.length ? t.map((r, i) => `<li class="j${i + 1}"><span class="md">${MEDALI[i] || `<span class="no">${i + 1}</span>`}</span><span class="nm">${esc(r.nama)}</span><span class="nv">${pc(pk(r))}<small>${rpS(r.R)}</small></span></li>`).join('') : '<li class="kos">belum ada data</li>'; };
-  $('rkMj').textContent = 'Top Ranking Minggu ' + (w + 1) + ' (% capaian target)'; isi('rkM', hitung(DATA, 'minggu', w).rows, false);
-  $('rkBj').textContent = 'Top Ranking Bulan ' + (BULAN[(+((DATA.bulan || $('fBulan').value).split('-')[1]) || 1) - 1] || '') + ' (% capaian target)'; isi('rkB', hitung(DATA, 'bulan', 0).rows, true);
+  $('rkMj').textContent = 'Top Ranking Minggu ' + (w + 1) + ' (% capaian target)'; isi('rkM', hitung(DATA, 'minggu', w).rows);
+  $('rkBj').textContent = 'Top Ranking Bulan ' + (BULAN[(+((DATA.bulan || $('fBulan').value).split('-')[1]) || 1) - 1] || '') + ' (% capaian target)'; isi('rkB', hitung(DATA, 'bulan', 0).rows);
 }
 function renderChart(H, kolT) {
   if (CHART) { CHART.destroy(); CHART = null; }
